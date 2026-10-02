@@ -1,0 +1,330 @@
+name: production-web
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - codex/production-iron-amber
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  references:
+    name: Original design and production source archive
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Attach original design and production art bytes
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-reference-${{ github.sha }}
+          path: |
+            docs/design/evidence/
+            web/public/athlete/
+            web/public/empire-art/
+            .gauntlet/shots/cutin/
+            .gauntlet/evidence/production/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  hosted:
+    name: Hosted beta frontend
+    needs: [domain, browser]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/codex/production-iron-amber'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      BROWSER_BASE_URL: https://three-white-lights-iron-amber.bthornton9415.chatgpt.site
+      BROWSER_EXPECT_AUTH: '1'
+      PRODUCTION_BASE_REVISION: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install exact browser runtime
+        run: npm --prefix web ci
+      - name: Rebuild and verify hosted artifacts against source and live bytes
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFile, readdir, writeFile } from 'node:fs/promises';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          const origin = new URL(process.env.BROWSER_BASE_URL).origin;
+          const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+          const expectedPaths = execFileSync('git', ['ls-files', '-z', '--', 'src', 'web', 'package.json', 'package-lock.json', 'tsconfig.json'], { encoding: 'utf8' }).split('\0').filter(Boolean).sort();
+          assert.ok(expectedPaths.includes('web/src/styles.css') && expectedPaths.includes('web/src/gameplay.css'));
+          let releaseResponse;
+          for (let attempt = 0; attempt < 36; attempt++) {
+            try {
+              const response = await fetch(origin + '/release.json', { signal: AbortSignal.timeout(10_000), cache: 'no-store' });
+              if (response.status === 403 || response.status === 429) throw new Error('Hosted origin refused release verification (HTTP ' + response.status + ').');
+              if (response.ok) { releaseResponse = response; break; }
+            } catch (error) {
+              if (/refused release verification/.test(error.message)) throw error;
+            }
+            await new Promise(resolve => setTimeout(resolve, 5_000));
+          }
+          assert.ok(releaseResponse, 'The reviewed source is not available at the hosted origin.');
+          const release = await releaseResponse.json();
+          assert.match(release.source_commit, /^[a-f0-9]{40}$/i, 'Hosted release has no full source revision.');
+          assert.equal(release.supabase_project, 'qbvmtgaphvpwpwemplje');
+          assert.deepEqual(release.source_files.map(file => file.path).sort(), expectedPaths, 'Hosted build input inventory is incomplete.');
+          for (const file of release.source_files) {
+            assert.equal(digest(await readFile(file.path)), file.sha256, 'Hosted source differs: ' + file.path);
+          }
+          await writeFile(process.env.GITHUB_ENV, 'PRODUCTION_BASE_REVISION=' + release.source_commit + '\n', { flag: 'a' });
+
+          const artifacts = new Map(release.artifact_files.map(file => [file.path, file]));
+          assert.equal(artifacts.size, release.artifact_files.length, 'Duplicate artifact path.');
+          assert.ok(artifacts.has('index.html'), 'Hosted inventory omits the entry point.');
+          for (const file of release.artifact_files) {
+            assert.ok(file.path && !file.path.startsWith('/') && !file.path.split('/').includes('..') && !file.path.includes('\\'), 'Unsafe artifact path: ' + file.path);
+            assert.match(file.sha256, /^[a-f0-9]{64}$/i, 'Invalid artifact digest: ' + file.path);
+          }
+          let html = '';
+          const hostedScripts = new Map();
+          const hostedSourceMaps = new Map();
+          const artifactRows = release.artifact_files;
+          for (let offset = 0; offset < artifactRows.length; offset += 8) {
+            const batch = artifactRows.slice(offset, offset + 8);
+            await Promise.all(batch.map(async file => {
+              const url = new URL(file.path, origin + '/');
+              assert.equal(url.origin, origin, 'Hosted asset escaped the approved origin.');
+              const response = await fetch(url, { signal: AbortSignal.timeout(20_000), cache: 'no-store' });
+              assert.equal(response.status, 200, 'Hosted asset did not return 200: ' + file.path);
+              assert.equal(new URL(response.url).origin, origin, 'Hosted asset redirected off origin: ' + file.path);
+              const bytes = Buffer.from(await response.arrayBuffer());
+              if (file.path === 'index.html') {
+                assert.match(response.headers.get('content-type') || '', /text\/html/i, 'Hosted entry is not served as HTML.');
+                html = bytes.toString('utf8');
+              } else {
+                assert.equal(digest(bytes), file.sha256, 'Hosted bytes differ: ' + file.path);
+                if (/\.js$/i.test(file.path)) hostedScripts.set(file.path, bytes.toString('utf8'));
+                if (/\.map$/i.test(file.path)) hostedSourceMaps.set(file.path, bytes.toString('utf8'));
+              }
+            }));
+          }
+          assert.ok(html, 'The hosted entry document is empty.');
+          const projectUrl = 'https://qbvmtgaphvpwpwemplje.supabase.co';
+          const application = artifactRows.filter(file => /\.js$/i.test(file.path)).map(file => hostedScripts.get(file.path)).join('\n');
+          assert.ok(application.includes(projectUrl));
+          assert.ok(!application.includes('browser-contract.invalid'));
+          assert.ok(!/sb_secret_[A-Za-z0-9_-]{8,}/.test(application));
+          const publicKeys = [...new Set([...application.matchAll(/sb_publishable_[A-Za-z0-9_-]+/g)].map(match => match[0]))];
+          assert.equal(publicKeys.length, 1, 'Hosted frontend must contain exactly one public Supabase key.');
+          const key = publicKeys[0];
+
+          execFileSync('npm', ['--prefix', 'web', 'run', 'build'], {
+            stdio: 'inherit',
+            env: { ...process.env, VITE_SUPABASE_URL: projectUrl, VITE_SUPABASE_PUBLISHABLE_KEY: key },
+          });
+          async function walk(directory, prefix = '') {
+            const files = [];
+            for (const entry of await readdir(directory, { withFileTypes: true })) {
+              const relative = prefix ? prefix + '/' + entry.name : entry.name;
+              if (entry.isDirectory()) files.push(...await walk(directory + '/' + entry.name, relative));
+              else if (entry.isFile()) files.push(relative);
+            }
+            return files;
+          }
+          const localFiles = (await walk('web/dist')).filter(file => file !== 'release.json').sort();
+          assert.deepEqual(localFiles, artifactRows.map(file => file.path).sort(), 'Local production build inventory differs from the hosted release.');
+          for (const file of artifactRows) {
+            const rebuilt = await readFile('web/dist/' + file.path);
+            if (/\.map$/i.test(file.path)) {
+              const servedMapText = hostedSourceMaps.get(file.path);
+              assert.ok(servedMapText, 'Hosted source map was not captured: ' + file.path);
+              const rebuiltMap = JSON.parse(rebuilt.toString('utf8'));
+              const servedMap = JSON.parse(servedMapText);
+              assert.equal(rebuiltMap.version, servedMap.version, 'Rebuilt source-map version differs: ' + file.path);
+              assert.equal(rebuiltMap.sources?.length, servedMap.sources?.length, 'Rebuilt source-map source count differs: ' + file.path);
+              for (const key of ['names', 'mappings', 'sourcesContent']) {
+                assert.deepEqual(rebuiltMap[key], servedMap[key], 'Rebuilt source-map ' + key + ' differs: ' + file.path);
+              }
+            } else {
+              assert.equal(digest(rebuilt), file.sha256, 'Rebuilt artifact differs: ' + file.path);
+            }
+          }
+
+          function attributes(source) {
+            const result = Object.create(null);
+            for (const match of source.matchAll(/([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g)) {
+              result[match[1].toLowerCase()] = match[2] ?? match[3] ?? match[4] ?? '';
+            }
+            return result;
+          }
+          function assetPath(value, label) {
+            assert.ok(value, label + ' has no URL.');
+            const url = new URL(value, origin + '/');
+            assert.equal(url.origin, origin, label + ' loads from an unapproved origin.');
+            assert.equal(url.search, '', label + ' adds an unverified query string.');
+            assert.equal(url.hash, '', label + ' adds an unverified fragment.');
+            const path = url.pathname.slice(1);
+            assert.ok(artifacts.has(path), label + ' is missing from the release inventory: ' + path);
+            return path;
+          }
+          const HOSTED_CLOUDFLARE_SCRIPT = `(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'<ray>',t:'<timestamp>'};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();`;
+          function shellSignature(markup, label) {
+            assert.match(markup, /<!doctype\s+html>/i, label + ' is missing its doctype.');
+            const htmlTag = markup.match(/<html\b([^>]*)>/i);
+            assert.ok(htmlTag, label + ' has no html element.');
+            const htmlAttrs = attributes(htmlTag[1]);
+            const titles = [...markup.matchAll(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/gi)].map(match => match[1].replace(/\s+/g, ' ').trim());
+            assert.equal(titles.length, 1, label + ' must have one title.');
+            const roots = [...markup.matchAll(/<([a-z][a-z0-9-]*)\b([^>]*)>/gi)].filter(match => attributes(match[2]).id === 'root').map(match => match[1].toLowerCase());
+            assert.deepEqual(roots, ['div'], label + ' must expose one application root.');
+            const viewports = [...markup.matchAll(/<meta\b([^>]*)>/gi)].map(match => attributes(match[1])).filter(attrs => attrs.name === 'viewport');
+            assert.equal(viewports.length, 1, label + ' must have one viewport definition.');
+            const scripts = [...markup.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)];
+            assert.equal((markup.match(/<script\b/gi) || []).length, scripts.length, label + ' contains an unclosed script.');
+            const references = [];
+            let hostedInlineScripts = 0;
+            for (const match of scripts) {
+              const attrs = attributes(match[1]);
+              const inline = (match[2] || '').trim();
+              if (inline) {
+                assert.equal(label, 'Hosted entry', label + ' contains inline executable code.');
+                assert.equal(attrs.src, undefined, 'Hosted entry combines inline and external script code.');
+                assert.equal(++hostedInlineScripts, 1, 'Hosted entry contains duplicate inline platform scripts.');
+                const normalized = inline.replace(/r:'[a-f0-9]{16}',t:'[A-Za-z0-9+/]+={0,2}'/, "r:'<ray>',t:'<timestamp>'");
+                assert.equal(normalized, HOSTED_CLOUDFLARE_SCRIPT, 'Hosted entry contains unrecognized inline code.');
+                continue;
+              }
+              const path = assetPath(attrs.src, 'Script');
+              assert.match(path, /\.js$/i, 'Executable entry is not JavaScript.');
+              assert.equal(attrs.type, 'module', 'Application script must remain an ES module.');
+              references.push('script:module:' + path);
+            }
+            for (const match of markup.matchAll(/<link\b([^>]*)\/?>/gi)) {
+              const attrs = attributes(match[1]);
+              const rel = (attrs.rel || '').toLowerCase().split(/\s+/).filter(Boolean).sort().join(' ');
+              const relevant = ['stylesheet', 'modulepreload'].some(value => rel.split(' ').includes(value))
+                || (rel.includes('preload') && attrs.as === 'script')
+                || ['icon', 'apple-touch-icon', 'manifest'].some(value => rel.split(' ').includes(value))
+                || (rel.includes('preload') && attrs.as === 'font');
+              if (!relevant) continue;
+              const path = assetPath(attrs.href, 'Link');
+              if (rel.includes('stylesheet')) assert.match(path, /\.css$/i, 'Stylesheet link is not CSS.');
+              if (rel.includes('modulepreload') || (rel.includes('preload') && attrs.as === 'script')) assert.match(path, /\.js$/i, 'Script preload is not JavaScript.');
+              references.push('link:' + rel + ':' + (attrs.as || '') + ':' + path);
+            }
+            assert.ok(scripts.length > 0, label + ' has no application script.');
+            assert.ok(references.some(reference => reference.startsWith('link:stylesheet:')), label + ' has no stylesheet.');
+            return { lang: htmlAttrs.lang || '', title: titles[0], root: roots[0], viewport: viewports[0].content || '', references };
+          }
+          const expectedShell = shellSignature(await readFile('web/dist/index.html', 'utf8'), 'Rebuilt entry');
+          const hostedShell = shellSignature(html, 'Hosted entry');
+          assert.deepEqual(hostedShell, expectedShell, 'Hosted HTML changed the app shell or its verified asset references.');
+          const auth = await fetch(projectUrl + '/auth/v1/settings', { headers: { apikey: key }, signal: AbortSignal.timeout(15_000) });
+          assert.equal(auth.status, 200, 'Hosted public configuration cannot reach live Auth.');
+          const api = projectUrl + '/functions/v1/twl-api';
+          const preflight = allowedOrigin => fetch(api, { method: 'OPTIONS', headers: { Origin: allowedOrigin, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,apikey,content-type' }, signal: AbortSignal.timeout(15_000) });
+          const allowed = await preflight(origin);
+          assert.equal(allowed.status, 204);
+          assert.equal(allowed.headers.get('access-control-allow-origin'), origin);
+          const denied = await preflight('https://unapproved-twl-origin.example');
+          assert.equal(denied.status, 403);
+          assert.equal(denied.headers.get('access-control-allow-origin'), null);
+          console.log(JSON.stringify({ appSourceCommit: release.source_commit, validatorHead: process.env.GITHUB_SHA, origin, sourceInputsVerified: expectedPaths.length, hostedArtifactsVerified: artifactRows.length, hostedIndexSha256: digest(Buffer.from(html)), packagedIndexSha256: artifacts.get('index.html').sha256, hostIndexTransformed: digest(Buffer.from(html)) !== artifacts.get('index.html').sha256, exactCorsVerified: true }));
+          JS
+      - name: Install browser
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Play the hosted beta through normal controls
+        run: npm --prefix web run test:browser
+      - name: Attach hosted browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosted-production-web-${{ github.sha }}
+          path: .gauntlet/shots/production-web/
+          if-no-files-found: warn
+          retention-days: 14
+
+  domain:
+    name: Frozen mechanics and progression
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - name: Install native and browser contracts
+        run: |
+          npm ci
+          npm --prefix web ci
+      - name: Existing strict typecheck
+        run: npm run typecheck
+      - name: Strict production and edge boundary typechecks
+        run: |
+          web/node_modules/.bin/tsc --noEmit --project src/production/tsconfig.json
+          web/node_modules/.bin/tsc --noEmit --project supabase/tsconfig.json
+      - name: Generated authoritative edge bundle matches native source
+        run: node supabase/bundle-api.mjs --check
+      - name: Full existing pure test suite
+        run: npm test
+
+  browser:
+    name: Production browser and mobile flow
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install browser runtime from its lock
+        run: npm --prefix web ci
+      - name: Strict browser typecheck
+        run: |
+          npm --prefix web run typecheck
+          npm --prefix web run typecheck:test
+      - name: Portable domain and browser-clock boundaries
+        run: npm --prefix web run test:domain
+      - name: Browser adapter unit tests
+        run: npm --prefix web run test:unit:web
+      - name: Build production assets
+        env:
+          VITE_SUPABASE_URL: https://browser-contract.invalid
+          VITE_SUPABASE_PUBLISHABLE_KEY: browser-contract-key
+        run: npm --prefix web run build
+      - name: Install browser
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Drive production build through normal controls
+        env:
+          PRODUCTION_BASE_REVISION: ${{ github.sha }}
+          BROWSER_EXPECT_AUTH: '1'
+        run: npm --prefix web run test:browser
+      - name: Attach browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-web-${{ github.sha }}
+          path: .gauntlet/shots/production-web/
+          if-no-files-found: error
+          retention-days: 14

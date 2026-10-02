@@ -1,0 +1,61 @@
+{
+  "directories": [
+    "art",
+    "audio",
+    "card",
+    "career",
+    "cutin",
+    "empire",
+    "facility",
+    "game",
+    "licensing",
+    "lift",
+    "meet",
+    "production",
+    "session",
+    "shell",
+    "tuning",
+    "ui"
+  ],
+  "counts": {
+    "NAMES_A_COVERED_DAY_OR_A_PURCHASE": [
+      102,
+      16
+    ],
+    "PURCHASE_WORD_ONLY": [
+      71,
+      16
+    ],
+    "CREDIT_PATH_TOKENS": [
+      72,
+      16
+    ],
+    "NAMES_THE_COUNTER_OR_THE_SOURCE": [
+      18,
+      3
+    ]
+  },
+  "files": [
+    "empire/empireCore.ts",
+    "empire/empireInvariant.ts",
+    "empire/engagement.ts",
+    "empire/expansion.ts",
+    "empire/reputation.ts",
+    "facility/empireCore.ts",
+    "facility/empireInvariant.ts",
+    "facility/expansion.ts",
+    "facility/reputation.ts",
+    "facility/sessions.ts",
+    "game/currencyProvenance.ts",
+    "game/progression.ts",
+    "game/streak.ts",
+    "game/streakEntitlement.ts",
+    "game/streakSweep.ts",
+    "tuning/audit.ts"
+  ],
+  "newDeclarations": [
+    "facility/sessions.ts::GymPurchase",
+    "facility/sessions.ts::GymRun",
+    "facility/sessions.ts::runGym"
+  ]
+}

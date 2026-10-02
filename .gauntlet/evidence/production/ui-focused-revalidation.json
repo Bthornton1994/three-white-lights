@@ -1,0 +1,177 @@
+{
+  "kind": "ui-focused-revalidation",
+  "checkpoint": "b246f9a423a3256465c56ed2fb111144fc3b6a21",
+  "tree": "a9c325cf0a541ef9999d4f3d1c41a0448a5e0597",
+  "status": "focused-checks-passed",
+  "verifiedAt": "2026-10-01T06:51:34.522136+00:00",
+  "sourceFiles": [
+    {
+      "path": "scripts/production-meet-browser.mjs",
+      "blob": "29abc32491bf7e9edf694cf743c5ec376ec8428a",
+      "sha256": "e05ea3e019d35e5e4af47542875a8f6e2291d12dcbfc75ea38e0412d4be7fc14",
+      "bytes": 17042
+    },
+    {
+      "path": "src/meet/useCareer.ts",
+      "blob": "e14966bb308092fdfdb779d19163ace6fcdedb24",
+      "sha256": "fc80e82a2781dfe4dec93d01c72e677b6a8eed3355994d9ebcd2c22d99a7b83d",
+      "bytes": 5981
+    },
+    {
+      "path": "src/meet/useMeetDay.ts",
+      "blob": "a7d2a4962aada9f4350bc271068e53a335ed47d3",
+      "sha256": "bcf5f731a2885564518d2bac32e9f65b31c91d7bf4463c2c7a57692e27735481",
+      "bytes": 17688
+    },
+    {
+      "path": "src/session/useSession.ts",
+      "blob": "d241d9967b15da3098b3491c3d831bbbff4bee69",
+      "sha256": "cc7e269c4d945041d063b453f714c3fb61288a58eb806ace99a962798f6a171f",
+      "bytes": 15902
+    },
+    {
+      "path": "web/src/App.tsx",
+      "blob": "bd6ae88f49fc6c8988cf8f150ef3fe6bf166d0ef",
+      "sha256": "4a6d08377128c625c4c1b5cd6c711714776522d26e23c52530bd07c0892d1fd5",
+      "bytes": 17046
+    },
+    {
+      "path": "web/src/Art.tsx",
+      "blob": "e2318c0de2461ed83e4b1caf2dd8d7932fcb38a6",
+      "sha256": "a7811393702ea6a424031b101d039bf1b15a82f910f02e5b7e6fde2586db9f41",
+      "bytes": 2539
+    },
+    {
+      "path": "web/src/Career.tsx",
+      "blob": "b2d8dcc89f7c002251afe77f2a0c8eafd180190d",
+      "sha256": "aa77828196532f2d8a68922d3a8c7890eb1a53285353b966fa18e72c11204986",
+      "bytes": 11213
+    },
+    {
+      "path": "web/src/Gym.tsx",
+      "blob": "400284aa8f58edbb61594bfe9e24fecca6bb0899",
+      "sha256": "5926435d56da2dbd2647b800efe4f5fc6b466af55dada6ae62afb46e890b0f1b",
+      "bytes": 21572
+    },
+    {
+      "path": "web/src/LiftPlayer.tsx",
+      "blob": "aa02392450ebf1d8acc42841128b8fda653eac42",
+      "sha256": "b038f30b50cd77db327aee8206e21479aafeec4a23a1d2cf01cd9e4eed7a4613",
+      "bytes": 15462
+    },
+    {
+      "path": "web/src/Meet.tsx",
+      "blob": "32a0292742ed56675bdaca954a18c5d6ad0942ab",
+      "sha256": "53f14ed0ec0f110c19b353778db3b9a01003a072028984d01766e0ce74c67382",
+      "bytes": 34280
+    },
+    {
+      "path": "web/src/Training.tsx",
+      "blob": "2dbb896a684e719ed326d8e2f2ed99d414db02c2",
+      "sha256": "924aa5fde87d7758be8589df608f53168640f83b72fb0be7ad6251ffd3c24c92",
+      "bytes": 18171
+    },
+    {
+      "path": "web/src/facilityPort.ts",
+      "blob": "235da9d852557775e9ea7e353cfd5092d3002020",
+      "sha256": "aef6330107b26d7e0b00b8b1ea3d1b93d04ddd84585678833779a0330a2a5692",
+      "bytes": 1222
+    },
+    {
+      "path": "web/src/gameplay.css",
+      "blob": "4017d128c112751a9f117791d7bfa8710f2205cc",
+      "sha256": "57a4eb292918d04fdff67c8938d3eb36a7635d185b99d25b1ea6e7cdb4d7df8f",
+      "bytes": 36044
+    },
+    {
+      "path": "web/src/gameplayPalette.ts",
+      "blob": "f238bfb2a5f57909ba0cf5499d3013f2ada4d05c",
+      "sha256": "51fe13becb12d5b9bd2cee59d42baf6baea79b7c931bc35d7150066397eafd01",
+      "bytes": 263
+    },
+    {
+      "path": "web/src/gameplayTuning.ts",
+      "blob": "348722b8f1fa2d585fac46900cba63847af43a39",
+      "sha256": "3e5c6e1d64d801fa1e4e1f1bc3c1bed1ce4da05d08bba0e3719d5595cc65e903",
+      "bytes": 2111
+    },
+    {
+      "path": "web/src/interfaceTuning.ts",
+      "blob": "b285748a8ff07b3a69e14fd1eff5c17462436c01",
+      "sha256": "541e5cb3d3054e477c8ff17a69d6edf3eda78fbd06ca3bfbf157747c52b98857",
+      "bytes": 1019
+    },
+    {
+      "path": "web/src/liftBrowser.test.ts",
+      "blob": "4ab61a352ef4362454ab1273129423a29644f4d5",
+      "sha256": "0d238410ae493447752ca720eaa36db4d7566288cad7e5e8253dc6daa0d04bd8",
+      "bytes": 12122
+    },
+    {
+      "path": "web/src/liftBrowser.ts",
+      "blob": "7677044885816290ed2d34b07bfee649e99283d9",
+      "sha256": "0c8be2f859a38b7ec27f767c1a242ffb8680084228ed1596095170d81d4c43af",
+      "bytes": 8305
+    },
+    {
+      "path": "web/src/main.tsx",
+      "blob": "30c8c18eec663c91b6de801f61dcee282dfdd2b2",
+      "sha256": "58d17abb5a5f7da036065debca90dd23c2ef17b962e1edb477f9cbbf0b48b08e",
+      "bytes": 1012
+    },
+    {
+      "path": "web/src/resultSheetCanvas.ts",
+      "blob": "6a557425fb98aad17021ba9f534f519b67a17440",
+      "sha256": "eda55e6cac9f7668ecf8a0cb4bd111ab8ece57cd7641f10e04afcc6cea00d672",
+      "bytes": 5385
+    },
+    {
+      "path": "web/src/resultSheetModel.test.ts",
+      "blob": "51687342bfee6d99c930714cc69e0b210e9f998b",
+      "sha256": "f22897a5d6c112c583fbab7aec395b88cd0ca964882229527db7e1871e3dda7e",
+      "bytes": 2826
+    },
+    {
+      "path": "web/src/resultSheetModel.ts",
+      "blob": "293dfedfcaf6bc70938010d1abf34cc87159bfad",
+      "sha256": "ce3839c012949ea64c202555e80188913aad8e4c4869454d12494950c239d671",
+      "bytes": 1401
+    },
+    {
+      "path": "web/src/styles.css",
+      "blob": "2b32c13216326f9c948b110f1c12d562f67facae",
+      "sha256": "a0071a8a9bf69e5ff7a2647e3698f0afea2adc20c25db58cd4522c4fc3714019",
+      "bytes": 40908
+    }
+  ],
+  "checks": [
+    {
+      "name": "39 focused UI cases",
+      "command": "npm run test:unit:web -- web/src/liftBrowser.test.ts web/src/resultSheetModel.test.ts",
+      "cwd": "web",
+      "exitCode": 0,
+      "wallTimeSeconds": 1.696867763,
+      "output": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\n\n> three-white-lights-web@1.0.0 test:unit:web\n> vitest run --config vitest.config.ts web/src/liftBrowser.test.ts web/src/resultSheetModel.test.ts\n\n\n RUN  v4.1.11 /workspace/scratch/4fc55cb00998/three-white-lights\n\n\n Test Files  2 passed (2)\n      Tests  39 passed (39)\n   Start at  23:50:40\n   Duration  1.00s (transform 872ms, setup 0ms, import 1.10s, tests 42ms, environment 0ms)\n\n"
+    },
+    {
+      "name": "strict web runtime",
+      "command": "npm run typecheck",
+      "cwd": "web",
+      "exitCode": 0,
+      "wallTimeSeconds": 5.249012338,
+      "output": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\n\n> three-white-lights-web@1.0.0 typecheck\n> tsc --noEmit\n\n"
+    },
+    {
+      "name": "strict web tests",
+      "command": "npm run typecheck:test",
+      "cwd": "web",
+      "exitCode": 0,
+      "wallTimeSeconds": 3.395710105,
+      "output": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\n\n> three-white-lights-web@1.0.0 typecheck:test\n> tsc --noEmit --project tsconfig.test.json\n\n"
+    }
+  ],
+  "limitations": [
+    "Focused browser-logic and strict TypeScript verification only. Full native suite and account browser capture are serialized separately.",
+    "Original final art bytes remain unavailable locally; this report makes no visual, physical-device, or live-Supabase claim."
+  ]
+}

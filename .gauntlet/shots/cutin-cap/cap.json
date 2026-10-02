@@ -1,0 +1,736 @@
+{
+  "capturedFrom": {
+    "capturedAt": "2026-09-15T19:38:41.841Z",
+    "url": "http://127.0.0.1:8081",
+    "commit": "52c7aa65",
+    "branch": "cursor/session-a-iron-amber-quality-1c66",
+    "workingTree": "clean",
+    "dirtyPaths": [
+      "M .gauntlet/shots/cutin/debug-meet-bombed.png",
+      " M .gauntlet/shots/cutin/frames.json",
+      " M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/meet/sound.json"
+    ],
+    "instrument": {
+      "verify-cutin-cap.mjs": "d4531c81e325c947",
+      "sessionDrive.mjs": "22f08f3bf985c4f8",
+      "meetDrive.mjs": "c84695c9aa55b4a3",
+      "readTuning.mjs": "a8d6095ece7ed3d3",
+      "enterMeetFromCalendar.mjs": "6cb0457e93c5df1d"
+    }
+  },
+  "theCap": 1,
+  "premise": {
+    "bombOutAllowance": 1,
+    "enterMs": 120,
+    "holdMs": 1600,
+    "wholeBeatMs": 1720
+  },
+  "legs": [
+    {
+      "n": 1,
+      "intent": "make",
+      "whatItIsFor": "a played meet — nine walk-outs and the recap, GDD §7.2’s \"one meet is one sitting\"",
+      "ended": "recap",
+      "attempts": [
+        {
+          "attempt": "SQUAT · ATTEMPT 1 OF 3",
+          "played": true,
+          "kind": "squat",
+          "holdMs": 840,
+          "fps": 59.9,
+          "fpsKeepsUp": true,
+          "fpsWhy": null,
+          "reachedDescent": true,
+          "reachedCommand": false,
+          "benchDescent": null,
+          "grind": null,
+          "reachedLockout": true,
+          "drivesTapped": 3,
+          "downCommandSeen": false,
+          "drove": true,
+          "feedback": "Depth was never in question."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 2 OF 3",
+          "played": true,
+          "kind": "squat",
+          "holdMs": 840,
+          "fps": 59.9,
+          "fpsKeepsUp": true,
+          "fpsWhy": null,
+          "reachedDescent": true,
+          "reachedCommand": false,
+          "benchDescent": null,
+          "grind": null,
+          "reachedLockout": true,
+          "drivesTapped": 4,
+          "downCommandSeen": false,
+          "drove": true,
+          "feedback": "It stopped, and you kept driving."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 3 OF 3",
+          "played": true,
+          "kind": "squat",
+          "holdMs": 840,
+          "fps": 59.9,
+          "fpsKeepsUp": true,
+          "fpsWhy": null,
+          "reachedDescent": true,
+          "reachedCommand": false,
+          "benchDescent": null,
+          "grind": null,
+          "reachedLockout": false,
+          "drivesTapped": 5,
+          "downCommandSeen": false,
+          "drove": true,
+          "feedback": "The bar won that one."
+        },
+        {
+          "attempt": "BENCH · ATTEMPT 1 OF 3",
+          "played": true,
+          "kind": "bench",
+          "holdMs": null,
+          "fps": 60,
+          "fpsKeepsUp": true,
+          "fpsWhy": null,
+          "reachedDescent": true,
+          "reachedCommand": true,
+          "benchDescent": {
+            "heldMs": 1032,
+            "deadlineMs": 6060,
+            "leftBecause": "beat",
+            "loop": {
+              "attempt": true,
+              "prompt": "WAIT FOR IT"
+            }
+          },
+          "grind": {
+            "dispatched": 41,
+            "ms": 1618,
+            "periodMs": 40,
+            "budgetMs": 14199,
+            "attempts": 237,
+            "gaps": {
+              "n": 40,
+              "meanMs": 40,
+              "minMs": 39,
+              "maxMs": 41
+            },
+            "impliedForce": 1,
+            "sawCommandLine": true,
+            "sawGrindLine": true,
+            "sawFalseStart": false,
+            "paused": null,
+            "abandonedAfter": null,
+            "abandonedAtMs": null,
+            "endedOn": "LOCK IT",
+            "stoppedBecause": "the rep stopped asking for taps",
+            "countedTaps": null
+          },
+          "reachedLockout": true,
+          "drivesTapped": 0,
+          "downCommandSeen": false,
+          "drove": false,
+          "feedback": "It stopped, and you kept driving."
+        },
+        {
+          "attempt": "BENCH · ATTEMPT 2 OF 3",
+          "played": true,
+          "kind": "bench",
+          "holdMs": null,
+          "fps": 59.9,
+          "fpsKeepsUp": true,
+          "fpsWhy": null,
+          "reachedDescent": true,
+          "reachedCommand": true,
+          "benchDescent": {
+            "heldMs": 1069,
+            "deadlineMs": 6060,
+            "leftBecause": "beat",
+            "loop": {
+              "attempt": true,
+              "prompt": "WAIT FOR IT"
+            }
+          },
+          "grind": {
+            "dispatched": 53,
+            "ms": 2113,
+            "periodMs": 40,
+            "budgetMs": 14199,
+            "attempts": 237,
+            "gaps": {
+              "n": 52,
+              "meanMs": 40,
+              "minMs": 39,
+              "maxMs": 42
+            },
+            "impliedForce": 1,
+            "sawCommandLine": true,
+            "sawGrindLine": true,
+            "sawFalseStart": false,
+            "paused": null,
+            "abandonedAfter": null,
+            "abandonedAtMs": null,
+            "endedOn": "LOCK IT",
+            "stoppedBecause": "the rep stopped asking for taps",
+            "countedTaps": null
+          },
+          "reachedLockout": true,
+          "drivesTapped": 0,
+          "downCommandSeen": false,
+          "drove": false,
+          "feedback": "It stopped, and you kept driving."
+        },
+        {
+          "attempt": "BENCH · ATTEMPT 3 OF 3",
+          "played": true,
+          "kind": "bench",
+          "holdMs": null,
+          "fps": 60.9,
+          "fpsKeepsUp": true,
+          "fpsWhy": null,
+          "reachedDescent": true,
+          "reachedCommand": true,
+          "benchDescent": {
+            "heldMs": 1140,
+            "deadlineMs": 6060,
+            "leftBecause": "beat",
+            "loop": {
+              "attempt": true,
+              "prompt": "WAIT FOR IT"
+            }
+          },
+          "grind": {
+            "dispatched": 68,
+            "ms": 2716,
+            "periodMs": 40,
+            "budgetMs": 14199,
+            "attempts": 237,
+            "gaps": {
+              "n": 67,
+              "meanMs": 40,
+              "minMs": 39,
+              "maxMs": 42
+            },
+            "impliedForce": 1,
+            "sawCommandLine": true,
+            "sawGrindLine": true,
+            "sawFalseStart": false,
+            "paused": null,
+            "abandonedAfter": null,
+            "abandonedAtMs": null,
+            "endedOn": "LOCK IT",
+            "stoppedBecause": "the rep stopped asking for taps",
+            "countedTaps": null
+          },
+          "reachedLockout": true,
+          "drivesTapped": 0,
+          "downCommandSeen": false,
+          "drove": false,
+          "feedback": "It stopped, and you kept driving."
+        },
+        {
+          "attempt": "DEADLIFT · ATTEMPT 1 OF 3",
+          "played": true,
+          "kind": "deadlift",
+          "holdMs": null,
+          "fps": 59.9,
+          "fpsKeepsUp": true,
+          "fpsWhy": null,
+          "reachedDescent": false,
+          "reachedCommand": false,
+          "benchDescent": null,
+          "grind": null,
+          "reachedLockout": true,
+          "drivesTapped": 2,
+          "downCommandSeen": true,
+          "drove": true,
+          "feedback": "It stopped, and you kept driving."
+        },
+        {
+          "attempt": "DEADLIFT · ATTEMPT 2 OF 3",
+          "played": true,
+          "kind": "deadlift",
+          "holdMs": null,
+          "fps": 59.9,
+          "fpsKeepsUp": true,
+          "fpsWhy": null,
+          "reachedDescent": false,
+          "reachedCommand": false,
+          "benchDescent": null,
+          "grind": null,
+          "reachedLockout": true,
+          "drivesTapped": 3,
+          "downCommandSeen": true,
+          "drove": true,
+          "feedback": "It stopped, and you kept driving."
+        },
+        {
+          "attempt": "DEADLIFT · ATTEMPT 3 OF 3",
+          "played": true,
+          "kind": "deadlift",
+          "holdMs": null,
+          "fps": 60,
+          "fpsKeepsUp": true,
+          "fpsWhy": null,
+          "reachedDescent": false,
+          "reachedCommand": false,
+          "benchDescent": null,
+          "grind": null,
+          "reachedLockout": false,
+          "drivesTapped": 3,
+          "downCommandSeen": false,
+          "drove": true,
+          "feedback": "The bar won that one."
+        }
+      ],
+      "ms": 103051,
+      "stuckBecause": "settled after 543ms"
+    },
+    {
+      "n": 2,
+      "intent": "miss",
+      "whatItIsFor": "a second sitting after the host went away — GDD §6.3's bomb-out, allowed in every sitting",
+      "ended": "bombed",
+      "attempts": [
+        {
+          "attempt": "SQUAT · ATTEMPT 1 OF 3",
+          "played": true,
+          "intent": "miss",
+          "holdMs": 80,
+          "feedback": "Too deep to recover."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 2 OF 3",
+          "played": true,
+          "intent": "miss",
+          "holdMs": 80,
+          "feedback": "Too deep to recover."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 3 OF 3",
+          "played": true,
+          "intent": "miss",
+          "holdMs": 80,
+          "feedback": "Too deep to recover."
+        }
+      ],
+      "ms": 55420,
+      "stuckBecause": null
+    }
+  ],
+  "cutIns": [
+    {
+      "leg": 1,
+      "at": 22469,
+      "line": "LAST ONE",
+      "hint": "TAP TO SKIP",
+      "over": [
+        "meet-walkout"
+      ],
+      "search": "",
+      "goneAt": 24200
+    }
+  ],
+  "gateDecisions": [
+    {
+      "seq": 0,
+      "leg": 1,
+      "at": 1845,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 0,
+      "firedCountAfter": 0,
+      "search": ""
+    },
+    {
+      "seq": 1,
+      "leg": 1,
+      "at": 12062,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 0,
+      "firedCountAfter": 0,
+      "search": ""
+    },
+    {
+      "seq": 2,
+      "leg": 1,
+      "at": 22470,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "fire",
+      "moment": "third-attempt-walkout",
+      "refusal": null,
+      "firedCountBefore": 0,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 3,
+      "leg": 1,
+      "at": 34296,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 4,
+      "leg": 1,
+      "at": 46209,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 5,
+      "leg": 1,
+      "at": 58010,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": "third-attempt-walkout",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 6,
+      "leg": 1,
+      "at": 71944,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 7,
+      "leg": 1,
+      "at": 82759,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 8,
+      "leg": 1,
+      "at": 93541,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": "third-attempt-walkout",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 9,
+      "leg": 1,
+      "at": 104776,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "record",
+        "record"
+      ],
+      "outcome": "refused",
+      "moment": "personal-record",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 10,
+      "leg": 2,
+      "at": 148022,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 11,
+      "leg": 2,
+      "at": 165554,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 12,
+      "leg": 2,
+      "at": 183053,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 13,
+      "leg": 2,
+      "at": 203305,
+      "sessionId": "meet-20711",
+      "beatKinds": [
+        "meet-over"
+      ],
+      "outcome": "refused",
+      "moment": "bomb-out",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    }
+  ],
+  "gateChannel": {
+    "name": "__cutInGateLog",
+    "seen": true,
+    "dropped": 0
+  },
+  "cutInFrames": [
+    {
+      "file": "cut-in-leg-1.png",
+      "leg": 1,
+      "artOpacity": 1,
+      "lineOpacity": 1,
+      "afterEnterMs": 120
+    }
+  ],
+  "recorderPolls": 13197,
+  "recorderWorstGapMs": 207,
+  "browserMutationWitnesses": [
+    {
+      "subject": "src/meet/BombOutView.tsx",
+      "mutant": "useOfferCutIn([{ kind: 'meet-over', bombedOut: true }]);  ->  useOfferCutIn([]);",
+      "wasRedBefore": false,
+      "wasRed": true,
+      "redCheck": "GDD §7.2: THE ASK — the 1 deliberately-bombed legs each OFFERED GDD §6.3's bomb-out beat TO THE GATE",
+      "alsoRed": "GDD §12.3: THE REFUSAL — every bomb-out beat that did not take the slot was refused for 'session-cap-reached'",
+      "note": "THE DEFECT THIS ROUND EXISTS FOR. The row shipped once with redCheck reading \"FILLED IN BY THE RUN BELOW\" — a placeholder published verbatim into cap.json, under a header claiming every row was run with the verbatim text of what reddened. A critic found it there. RESOLVED BY RUNNING THE MUTANT RATHER THAN BY EDITING THE STRING: wasRed was TRUE, so the header was right and the field was the lie. The run reddened TWO checks, both recorded — the ASK is the one that names the hole, the REFUSAL follows from it because a beat nobody offers is a beat nothing can refuse."
+    }
+  ],
+  "checks": [
+    {
+      "ok": true,
+      "what": "CONTROL: the source readers still read their own fixture",
+      "detail": "readTuning.mjs parses the shapes it claims to"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the recap screen's own arrival arithmetic was READ, not guessed",
+      "detail": "5 x 240 + 280 = 1480ms"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the bomb-out screen's own arrival arithmetic was READ, not guessed — a blank photograph is what a failed read used to look like",
+      "detail": "1500 + 3 x 700 + 620 = 4220ms"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: this tool's premise — SESSION_ALLOWANCE['bomb-out'] is 1, so the beat legs 2 and 3 lean on qualifies in EVERY sitting",
+      "detail": "read 1 from src/cutin/cutInTuning.ts; anything below 1 makes the roll seed-dependent and this tool can no longer promise a qualifying beat"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the four values this tool steers and waits by came out of the app, not out of this file",
+      "detail": "ENTER_MS 120, HOLD_MS 1600, LOCAL_SERVER_LATENCY_MS 550, FEEDBACK_DEPTH_HIGH \"High. The hips never got under.\", FEEDBACK_BURIED \"Too deep to recover.\""
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the gate's own decision log has a name, and it was READ from src/cutin/cutInObserver.ts",
+      "detail": "\"__cutInGateLog\"; the in-page recorder drains this on the same poll it watches the DOM on"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the animation scan still sees a screen that animates, so a probe choice resting on \"nothing animates\" is a claim the scan could refute",
+      "detail": "BombOutView.tsx animates: true (must be true, or the pattern has stopped matching and every probe-the-container decision below rests on a scan that sees nothing). The placeholder half of this control went with the placeholder (Sprint 1c): the refused ending is one static Text inside MeetScreen.tsx, which animates elsewhere, so a file-level scan cannot isolate that arm and does not claim to."
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: every one of the 7 endings driveMeet can return has a row in ENDING_PROBE",
+      "detail": "declared [\"bombed\",\"overrun\",\"recap\",\"refused\",\"stuck\",\"timeout\",\"waiting\"]; probed [\"bombed\",\"overrun\",\"recap\",\"refused\",\"stuck\",\"timeout\",\"waiting\"]. A new ending with no row is the shape that emitted \"the 'placeholder' screen is DRAWN … probed (none)\"."
+    },
+    {
+      "ok": true,
+      "what": "the app opens on GDD §3.2's daily session with no query string",
+      "detail": "search=\"\" after 4ms"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the address bar carries no query string — this is the played arm, not a debug frame",
+      "detail": "\"\""
+    },
+    {
+      "ok": true,
+      "what": "leg 1: meet day was reached with a finger, not a URL — a played meet — nine walk-outs and the recap, GDD §7.2’s \"one meet is one sitting\"",
+      "detail": "search=\"\""
+    },
+    {
+      "ok": true,
+      "what": "leg 1: the 'recap' screen is DRAWN, not merely mounted, before the shutter",
+      "detail": "probed recap-action: effective opacity 1.000 after 1480ms (5 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
+    },
+    {
+      "ok": true,
+      "what": "leg 1: the meet surface really went away — CutInHost un-mounted",
+      "detail": "back on the check-in after 1ms, meet-screen present: false"
+    },
+    {
+      "ok": true,
+      "what": "leg 2: meet day was reached with a finger, not a URL — a second sitting after the host went away — GDD §6.3's bomb-out, allowed in every sitting",
+      "detail": "search=\"\""
+    },
+    {
+      "ok": true,
+      "what": "leg 2: the 'bombed' screen is DRAWN, not merely mounted, before the shutter",
+      "detail": "probed bomb-out-action: effective opacity 1.000 after 4220ms (BOMB_OUT_SILENCE_MS + 3 x BOMB_OUT_ROW_STAGGER_MS + BOMB_OUT_ROW_FADE_MS, read from meetTuning.ts)"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the in-page recorder ran at all",
+      "detail": "13197 polls at a nominal 16ms, worst gap 207ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the local calendar day did not turn over mid-run, so all three legs are ONE sitting",
+      "detail": "Tue Sep 15 2026 -> Tue Sep 15 2026; cutInSessionId('meet', day) is a function of this"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the host was torn down between legs — exactly 1 times",
+      "detail": "saw 1; a run where the surface never went away would not have exercised the remount at all"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the 1 deliberately-bombed legs each REACHED GDD §6.3's bomb-out screen (this sees the screen, not the offer)",
+      "detail": "1 of 1; endings were [\"1:recap\",\"2:bombed\"]. Without this, \"exactly one cut-in\" is also what a run that never offered a second qualifying beat reports."
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: every cut-in counted was on the played arm — no query string in the address bar",
+      "detail": "0 of 1 carried one"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the gate's own decision channel was open, and its log did not overflow",
+      "detail": "channel \"__cutInGateLog\" seen: true; dropped 0 (CUT_IN_TUNING.OBSERVED_DECISIONS is the bound; anything above 0 means the earliest offers of this run are gone and every count below is over a truncated log); 14 decisions drained"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: every DECISION observed was on the played arm too — no query string in the address bar",
+      "detail": "0 of 14 carried one. The sibling of the cut-in check above, applied mechanically rather than left to whoever reads this: `?cutin=` stages a beat through the same `offer`, so a decision taken down the debug arm would otherwise count here."
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2: THE ASK, LEG 1 — every attempt the player lifted OFFERED its walk-out beat to the gate",
+      "detail": "9 walk-out offer(s) against 9 attempt(s) played on leg 1. This is the beat §12.2 grades meet day on. Deleting useOfferCutIn from WalkoutView, or letting bombRisk arrive always-true so the gate reads every walk-out as no qualifying moment, reddens here — and used to redden nothing in this file."
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2: THE ASK, LEG 1 — the recap OFFERED both PR sub-moments the app can reach",
+      "detail": "1 record offer(s) carrying 2 record beat(s); want 1 carrying 2. §7.2 names three PR sub-moments and only two are reachable by any screen — 'tier' by none, which cutInGate.ts §5 discloses. So two is the whole of what the app can ask for, and a drop to one means a screen stopped asking rather than that the third arrived."
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2: THE ASK — the 1 deliberately-bombed legs each OFFERED GDD §6.3's bomb-out beat TO THE GATE",
+      "detail": "1 of 1, on legs [2] (expected [2]). This is the line the screen check above cannot say. A build where BombOutView stopped offering — the `useOfferCutIn` line gone, or `bombedOut` arriving false so the gate reads the beat as no moment at all — leaves every other check in this file green and reddens here."
+    },
+    {
+      "ok": true,
+      "what": "GDD §12.3: THE REFUSAL — every bomb-out beat that did not take the slot was refused for 'session-cap-reached'",
+      "detail": "1 refused by the CAP, 0 fired, against 1 asked. Reasons in order: [\"session-cap-reached\"]. Not 'held-back-for-scarcity' — that is §7.2's soft rate and SESSION_ALLOWANCE['bomb-out'] is 1 — and not 'no-qualifying-moment', which would mean the beat never qualified. Nothing asked at all gives 0 against a want of 1, which is red."
+    },
+    {
+      "ok": true,
+      "what": "GDD §12.3: THE GRANT — the gate granted exactly 1 cut-in across the whole sitting",
+      "detail": "1 grant(s): [\"leg 1 third-attempt-walkout (count 0->1)\"]. Every other decision was a refusal: [\"no-qualifying-moment\",\"session-cap-reached\"] over 13 of them."
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2 / §12.3: ONE SITTING, ONE CUT-IN — 2 legs of one meet-day sitting fired exactly 1",
+      "detail": "leg 1 @22469ms \"LAST ONE\" over meet-walkout gone at 24200ms after 1731ms"
+    },
+    {
+      "ok": true,
+      "what": "GDD §12.3: the gate’s grant count and the overlay count are the SAME NUMBER",
+      "detail": "gate granted 1, 1 overlay(s) reached the screen. They come apart in two ways and both matter: a grant that never drew (the view stopped rendering), and two grants counted as one overlay (`live` A->B reconciled in place, which a DOM transition watcher cannot see)."
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2: every overlay was up for ONE whole beat — not two reconciled into one, and none left on screen",
+      "detail": "spans [1731]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2: the cut-in was PHOTOGRAPHED — 1 frame, with its art AND its line drawn rather than merely mounted",
+      "detail": "cut-in-leg-1.png (leg 1): cut-in-art effective opacity 1.000, cut-in-line 1.000, taken 120ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts) — floor 0.9"
+    }
+  ],
+  "failures": [],
+  "pageErrors": []
+}

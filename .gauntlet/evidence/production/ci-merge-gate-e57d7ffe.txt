@@ -1,0 +1,975 @@
+﻿2026-10-01T06:59:57.7866256Z Current runner version: '2.337.0'
+2026-10-01T06:59:57.7884577Z ##[group]Runner Image Provisioner
+2026-10-01T06:59:57.7885170Z Hosted Compute Agent
+2026-10-01T06:59:57.7885547Z Version: 20260901.588
+2026-10-01T06:59:57.7886072Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-01T06:59:57.7886512Z Build Date: 2026-09-01T19:56:44Z
+2026-10-01T06:59:57.7886954Z Worker ID: {6da980c1-1354-4fd2-8ca8-22cb4a7087c4}
+2026-10-01T06:59:57.7887432Z Azure Region: centralus
+2026-10-01T06:59:57.7887795Z ##[endgroup]
+2026-10-01T06:59:57.7888632Z ##[group]Operating System
+2026-10-01T06:59:57.7888999Z Ubuntu
+2026-10-01T06:59:57.7889313Z 24.04.5
+2026-10-01T06:59:57.7890000Z LTS
+2026-10-01T06:59:57.7890385Z ##[endgroup]
+2026-10-01T06:59:57.7890761Z ##[group]Runner Image
+2026-10-01T06:59:57.7891140Z Image: ubuntu-24.04
+2026-10-01T06:59:57.7891476Z Version: 20260927.320.1
+2026-10-01T06:59:57.7892319Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260927.320/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-01T06:59:57.7893236Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260927.320
+2026-10-01T06:59:57.7893806Z ##[endgroup]
+2026-10-01T06:59:57.7894563Z ##[group]GITHUB_TOKEN Permissions
+2026-10-01T06:59:57.7895861Z Contents: read
+2026-10-01T06:59:57.7896203Z Metadata: read
+2026-10-01T06:59:57.7896611Z Packages: read
+2026-10-01T06:59:57.7896960Z ##[endgroup]
+2026-10-01T06:59:57.7898387Z Secret source: Actions
+2026-10-01T06:59:57.7898959Z Cache mode: write
+2026-10-01T06:59:57.7899420Z Prepare workflow directory
+2026-10-01T06:59:57.8120407Z Prepare all required actions
+2026-10-01T06:59:57.8153652Z Getting action download info
+2026-10-01T06:59:58.0751629Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-01T06:59:58.1705984Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-10-01T06:59:58.3387729Z Complete job name: gate
+2026-10-01T06:59:58.3877126Z ##[group]Run actions/checkout@v4
+2026-10-01T06:59:58.3877580Z with:
+2026-10-01T06:59:58.3877817Z   fetch-depth: 0
+2026-10-01T06:59:58.3878104Z   repository: Bthornton1994/three-white-lights
+2026-10-01T06:59:58.3880549Z   token: ***
+2026-10-01T06:59:58.3880792Z   ssh-strict: true
+2026-10-01T06:59:58.3881038Z   ssh-user: git
+2026-10-01T06:59:58.3881290Z   persist-credentials: true
+2026-10-01T06:59:58.3881566Z   clean: true
+2026-10-01T06:59:58.3881817Z   sparse-checkout-cone-mode: true
+2026-10-01T06:59:58.3882112Z   fetch-tags: false
+2026-10-01T06:59:58.3882362Z   show-progress: true
+2026-10-01T06:59:58.3882615Z   lfs: false
+2026-10-01T06:59:58.3882845Z   submodules: false
+2026-10-01T06:59:58.3883102Z   set-safe-directory: true
+2026-10-01T06:59:58.3883390Z   allow-unsafe-pr-checkout: false
+2026-10-01T06:59:58.3883766Z ##[endgroup]
+2026-10-01T06:59:58.4584083Z Syncing repository: Bthornton1994/three-white-lights
+2026-10-01T06:59:58.4585662Z ##[group]Getting Git version info
+2026-10-01T06:59:58.4586453Z Working directory is '/home/runner/work/three-white-lights/three-white-lights'
+2026-10-01T06:59:58.4587432Z [command]/usr/bin/git version
+2026-10-01T06:59:58.4663533Z git version 2.55.0
+2026-10-01T06:59:58.4677832Z ##[endgroup]
+2026-10-01T06:59:58.4688153Z Temporarily overriding HOME='/home/runner/work/_temp/13eeb77c-951e-472b-b33e-d218be75ef54' before making global git config changes
+2026-10-01T06:59:58.4689582Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-01T06:59:58.4692557Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/three-white-lights/three-white-lights
+2026-10-01T06:59:58.4739396Z Deleting the contents of '/home/runner/work/three-white-lights/three-white-lights'
+2026-10-01T06:59:58.4745787Z ##[group]Initializing the repository
+2026-10-01T06:59:58.4746516Z [command]/usr/bin/git init /home/runner/work/three-white-lights/three-white-lights
+2026-10-01T06:59:58.4855552Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-01T06:59:58.4856847Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-01T06:59:58.4857658Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-01T06:59:58.4858742Z hint: call:
+2026-10-01T06:59:58.4859082Z hint:
+2026-10-01T06:59:58.4859536Z hint: 	git config --global init.defaultBranch <name>
+2026-10-01T06:59:58.4860209Z hint:
+2026-10-01T06:59:58.4860698Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-01T06:59:58.4861499Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-01T06:59:58.4862136Z hint:
+2026-10-01T06:59:58.4862489Z hint: 	git branch -m <name>
+2026-10-01T06:59:58.4862889Z hint:
+2026-10-01T06:59:58.4863432Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-01T06:59:58.4864630Z Initialized empty Git repository in /home/runner/work/three-white-lights/three-white-lights/.git/
+2026-10-01T06:59:58.4866441Z [command]/usr/bin/git remote add origin https://github.com/Bthornton1994/three-white-lights
+2026-10-01T06:59:58.4921990Z ##[endgroup]
+2026-10-01T06:59:58.4922741Z ##[group]Disabling automatic garbage collection
+2026-10-01T06:59:58.4924816Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-01T06:59:58.4978216Z ##[endgroup]
+2026-10-01T06:59:58.4984175Z ##[group]Setting up auth
+2026-10-01T06:59:58.4984921Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-01T06:59:58.5016312Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-01T06:59:58.5323653Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-01T06:59:58.5354092Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-01T06:59:58.5536168Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-01T06:59:58.5567058Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-01T06:59:58.5754131Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-01T06:59:58.5792529Z ##[endgroup]
+2026-10-01T06:59:58.5793095Z ##[group]Fetching the repository
+2026-10-01T06:59:58.5800592Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/* +5ecc6dfdf89a954f689df0744c66dbc09cb7f8ae:refs/remotes/pull/89/merge
+2026-10-01T07:00:09.5385350Z From https://github.com/Bthornton1994/three-white-lights
+2026-10-01T07:00:09.5385958Z  * [new branch]        agent/add-project-vision                 -> origin/agent/add-project-vision
+2026-10-01T07:00:09.5386369Z  * [new branch]        agent/agent-native-tooling               -> origin/agent/agent-native-tooling
+2026-10-01T07:00:09.5386838Z  * [new branch]        agent/design-agency-ui-direction         -> origin/agent/design-agency-ui-direction
+2026-10-01T07:00:09.5387287Z  * [new branch]        agent/pstack-engineering-quality-layer   -> origin/agent/pstack-engineering-quality-layer
+2026-10-01T07:00:09.5387768Z  * [new branch]        archive/rescued-a4-observe-refusal       -> origin/archive/rescued-a4-observe-refusal
+2026-10-01T07:00:09.5388210Z  * [new branch]        archive/rescued-c1-sweep-bench           -> origin/archive/rescued-c1-sweep-bench
+2026-10-01T07:00:09.5388653Z  * [new branch]        archive/rescued-gdd-66-ruling            -> origin/archive/rescued-gdd-66-ruling
+2026-10-01T07:00:09.5389042Z  * [new branch]        archive/rescued-s2-crowd-carries         -> origin/archive/rescued-s2-crowd-carries
+2026-10-01T07:00:09.5389482Z  * [new branch]        archive/rescued-s2-crowd-legibility      -> origin/archive/rescued-s2-crowd-legibility
+2026-10-01T07:00:09.5390828Z  * [new branch]        archive/rescued-x1-ledger-bites          -> origin/archive/rescued-x1-ledger-bites
+2026-10-01T07:00:09.5391477Z  * [new branch]        chatgpt/stage-g2c1-stay-response         -> origin/chatgpt/stage-g2c1-stay-response
+2026-10-01T07:00:09.5392016Z  * [new branch]        chore/typesafe-agent-skill-20260917      -> origin/chore/typesafe-agent-skill-20260917
+2026-10-01T07:00:09.5392434Z  * [new branch]        claude/a4-observe-refusal                -> origin/claude/a4-observe-refusal
+2026-10-01T07:00:09.5392944Z  * [new branch]        claude/agent-config-setup-m2r6ny         -> origin/claude/agent-config-setup-m2r6ny
+2026-10-01T07:00:09.5393370Z  * [new branch]        claude/amazing-cori-0lbodp               -> origin/claude/amazing-cori-0lbodp
+2026-10-01T07:00:09.5393790Z  * [new branch]        claude/anchor-claim-honest               -> origin/claude/anchor-claim-honest
+2026-10-01T07:00:09.5394147Z  * [new branch]        claude/away-card-overlap                 -> origin/claude/away-card-overlap
+2026-10-01T07:00:09.5394512Z  * [new branch]        claude/bench-difficulty                  -> origin/claude/bench-difficulty
+2026-10-01T07:00:09.5394860Z  * [new branch]        claude/bench-grind                       -> origin/claude/bench-grind
+2026-10-01T07:00:09.5395204Z  * [new branch]        claude/bench-max-effort                  -> origin/claude/bench-max-effort
+2026-10-01T07:00:09.5395582Z  * [new branch]        claude/bench-stage-drivers               -> origin/claude/bench-stage-drivers
+2026-10-01T07:00:09.5396031Z  * [new branch]        claude/bench-tap-burst                   -> origin/claude/bench-tap-burst
+2026-10-01T07:00:09.5396452Z  * [new branch]        claude/bench-working-lever               -> origin/claude/bench-working-lever
+2026-10-01T07:00:09.5397029Z  * [new branch]        claude/bench-working-lever-drivers       -> origin/claude/bench-working-lever-drivers
+2026-10-01T07:00:09.5397439Z  * [new branch]        claude/budgets-under-load                -> origin/claude/budgets-under-load
+2026-10-01T07:00:09.5397813Z  * [new branch]        claude/c1-career-spine                   -> origin/claude/c1-career-spine
+2026-10-01T07:00:09.5398198Z  * [new branch]        claude/c1-sweep-depth                    -> origin/claude/c1-sweep-depth
+2026-10-01T07:00:09.5398586Z  * [new branch]        claude/c1-worlds-reach                   -> origin/claude/c1-worlds-reach
+2026-10-01T07:00:09.5399048Z  * [new branch]        claude/campaign-summit                   -> origin/claude/campaign-summit
+2026-10-01T07:00:09.5399454Z  * [new branch]        claude/career-ui                         -> origin/claude/career-ui
+2026-10-01T07:00:09.5400159Z  * [new branch]        claude/career-wiring                     -> origin/claude/career-wiring
+2026-10-01T07:00:09.5400853Z  * [new branch]        claude/covered-day-alias-guard           -> origin/claude/covered-day-alias-guard
+2026-10-01T07:00:09.5401423Z  * [new branch]        claude/covered-day-guard-widen           -> origin/claude/covered-day-guard-widen
+2026-10-01T07:00:09.5402041Z  * [new branch]        claude/cutincap-three-lifts              -> origin/claude/cutincap-three-lifts
+2026-10-01T07:00:09.5402555Z  * [new branch]        claude/deadlift-browser-evidence         -> origin/claude/deadlift-browser-evidence
+2026-10-01T07:00:09.5403004Z  * [new branch]        claude/derive-purchased-day-scan-a444c8  -> origin/claude/derive-purchased-day-scan-a444c8
+2026-10-01T07:00:09.5403426Z  * [new branch]        claude/devweb-sentinel                   -> origin/claude/devweb-sentinel
+2026-10-01T07:00:09.5403791Z  * [new branch]        claude/drawn-reading-pairing             -> origin/claude/drawn-reading-pairing
+2026-10-01T07:00:09.5404163Z  * [new branch]        claude/each-measured-bites               -> origin/claude/each-measured-bites
+2026-10-01T07:00:09.5404564Z  * [new branch]        claude/empire-engagement-repair-k7x3     -> origin/claude/empire-engagement-repair-k7x3
+2026-10-01T07:00:09.5405164Z  * [new branch]        claude/empire-idle-wiring                -> origin/claude/empire-idle-wiring
+2026-10-01T07:00:09.5405525Z  * [new branch]        claude/empire-members-s6                 -> origin/claude/empire-members-s6
+2026-10-01T07:00:09.5405909Z  * [new branch]        claude/empire-presentation-floor         -> origin/claude/empire-presentation-floor
+2026-10-01T07:00:09.5406304Z  * [new branch]        claude/empire-s5-build-h9rvca            -> origin/claude/empire-s5-build-h9rvca
+2026-10-01T07:00:09.5406689Z  * [new branch]        claude/empire-s5-visual-lane             -> origin/claude/empire-s5-visual-lane
+2026-10-01T07:00:09.5407061Z  * [new branch]        claude/empire-screen-bites               -> origin/claude/empire-screen-bites
+2026-10-01T07:00:09.5407434Z  * [new branch]        claude/empire-shell-honesty              -> origin/claude/empire-shell-honesty
+2026-10-01T07:00:09.5407811Z  * [new branch]        claude/equipment-provenance              -> origin/claude/equipment-provenance
+2026-10-01T07:00:09.5408207Z  * [new branch]        claude/evidence-sequencing-guard         -> origin/claude/evidence-sequencing-guard
+2026-10-01T07:00:09.5408697Z  * [new branch]        claude/fable-visual-feasibility-e0qo5i   -> origin/claude/fable-visual-feasibility-e0qo5i
+2026-10-01T07:00:09.5409173Z  * [new branch]        claude/gain-rate-20                      -> origin/claude/gain-rate-20
+2026-10-01T07:00:09.5409525Z  * [new branch]        claude/grind-stage-drivers               -> origin/claude/grind-stage-drivers
+2026-10-01T07:00:09.5410068Z  * [new branch]        claude/grok-build-plugin-cc-marketplace-xefsmh -> origin/claude/grok-build-plugin-cc-marketplace-xefsmh
+2026-10-01T07:00:09.5410523Z  * [new branch]        claude/guarantee-numbers-bite            -> origin/claude/guarantee-numbers-bite
+2026-10-01T07:00:09.5410906Z  * [new branch]        claude/hold-pad-held-leak-fix            -> origin/claude/hold-pad-held-leak-fix
+2026-10-01T07:00:09.5411406Z  * [new branch]        claude/lift-press-browser-check          -> origin/claude/lift-press-browser-check
+2026-10-01T07:00:09.5411818Z  * [new branch]        claude/marker-survives-tree-death        -> origin/claude/marker-survives-tree-death
+2026-10-01T07:00:09.5412216Z  * [new branch]        claude/meet-tension-played-arm           -> origin/claude/meet-tension-played-arm
+2026-10-01T07:00:09.5412603Z  * [new branch]        claude/meetdrive-three-lifts             -> origin/claude/meetdrive-three-lifts
+2026-10-01T07:00:09.5412968Z  * [new branch]        claude/offline-cap-b                     -> origin/claude/offline-cap-b
+2026-10-01T07:00:09.5413324Z  * [new branch]        claude/pr-meaning-one-thing              -> origin/claude/pr-meaning-one-thing
+2026-10-01T07:00:09.5413710Z  * [new branch]        claude/press-fix-played-surfaces         -> origin/claude/press-fix-played-surfaces
+2026-10-01T07:00:09.5414105Z  * [new branch]        claude/printed-not-compared              -> origin/claude/printed-not-compared
+2026-10-01T07:00:09.5414499Z  * [new branch]        claude/qualifying-totals-research        -> origin/claude/qualifying-totals-research
+2026-10-01T07:00:09.5414916Z  * [new branch]        claude/r1-return-leg-trained-day         -> origin/claude/r1-return-leg-trained-day
+2026-10-01T07:00:09.5415285Z  * [new branch]        claude/r2-from-intent                    -> origin/claude/r2-from-intent
+2026-10-01T07:00:09.5415646Z  * [new branch]        claude/realip-text-file-widen            -> origin/claude/realip-text-file-widen
+2026-10-01T07:00:09.5416010Z  * [new branch]        claude/s2-crowd-carries                  -> origin/claude/s2-crowd-carries
+2026-10-01T07:00:09.5416364Z  * [new branch]        claude/s2-crowd-legibility               -> origin/claude/s2-crowd-legibility
+2026-10-01T07:00:09.5416723Z  * [new branch]        claude/s3-played-arm-sound               -> origin/claude/s3-played-arm-sound
+2026-10-01T07:00:09.5417092Z  * [new branch]        claude/section-4a-witnesses              -> origin/claude/section-4a-witnesses
+2026-10-01T07:00:09.5417589Z  * [new branch]        claude/session-a-visual-architecture     -> origin/claude/session-a-visual-architecture
+2026-10-01T07:00:09.5417974Z  * [new branch]        claude/shell-pin-axis                    -> origin/claude/shell-pin-axis
+2026-10-01T07:00:09.5418331Z  * [new branch]        claude/spend-once-monotone               -> origin/claude/spend-once-monotone
+2026-10-01T07:00:09.5418708Z  * [new branch]        claude/streak-673-pinned                 -> origin/claude/streak-673-pinned
+2026-10-01T07:00:09.5419057Z  * [new branch]        claude/test-path-refs                    -> origin/claude/test-path-refs
+2026-10-01T07:00:09.5419421Z  * [new branch]        claude/totals-generator-bound            -> origin/claude/totals-generator-bound
+2026-10-01T07:00:09.5419853Z  * [new branch]        claude/v2-s1b-view                       -> origin/claude/v2-s1b-view
+2026-10-01T07:00:09.5420179Z  * [new branch]        claude/v2-s2b-view                       -> origin/claude/v2-s2b-view
+2026-10-01T07:00:09.5420567Z  * [new branch]        claude/verification-incomplete-marker    -> origin/claude/verification-incomplete-marker
+2026-10-01T07:00:09.5420954Z  * [new branch]        claude/vl3-bench-2c                      -> origin/claude/vl3-bench-2c
+2026-10-01T07:00:09.5421285Z  * [new branch]        claude/vl3-census-2b                     -> origin/claude/vl3-census-2b
+2026-10-01T07:00:09.5421611Z  * [new branch]        claude/vl3-census-2c                     -> origin/claude/vl3-census-2c
+2026-10-01T07:00:09.5421941Z  * [new branch]        claude/vl3-census2-2c                    -> origin/claude/vl3-census2-2c
+2026-10-01T07:00:09.5422280Z  * [new branch]        claude/vl3-evidence-2b                   -> origin/claude/vl3-evidence-2b
+2026-10-01T07:00:09.5422613Z  * [new branch]        claude/vl3-hud-2c                        -> origin/claude/vl3-hud-2c
+2026-10-01T07:00:09.5423051Z  * [new branch]        claude/vl3-instruments-2b                -> origin/claude/vl3-instruments-2b
+2026-10-01T07:00:09.5423400Z  * [new branch]        claude/vl3-runtime-2b                    -> origin/claude/vl3-runtime-2b
+2026-10-01T07:00:09.5423754Z  * [new branch]        claude/witness-number-bites              -> origin/claude/witness-number-bites
+2026-10-01T07:00:09.5424124Z  * [new branch]        claude/witness-reproducible              -> origin/claude/witness-reproducible
+2026-10-01T07:00:09.5424481Z  * [new branch]        claude/x1-ledger-bites                   -> origin/claude/x1-ledger-bites
+2026-10-01T07:00:09.5424829Z  * [new branch]        claude/x2-vacuous-triple                 -> origin/claude/x2-vacuous-triple
+2026-10-01T07:00:09.5425209Z  * [new branch]        codex/athlete-01-rive-authoring          -> origin/codex/athlete-01-rive-authoring
+2026-10-01T07:00:09.5425586Z  * [new branch]        codex/production-iron-amber              -> origin/codex/production-iron-amber
+2026-10-01T07:00:09.5425991Z  * [new branch]        codex/test-audit-skill-20260929-6f813a   -> origin/codex/test-audit-skill-20260929-6f813a
+2026-10-01T07:00:09.5426406Z  * [new branch]        cursor/a11-feel-gate-freeze-8f47         -> origin/cursor/a11-feel-gate-freeze-8f47
+2026-10-01T07:00:09.5426812Z  * [new branch]        cursor/ambient-member-witness-8f47       -> origin/cursor/ambient-member-witness-8f47
+2026-10-01T07:00:09.5427222Z  * [new branch]        cursor/arcade-snes-visual-bar-ee5b       -> origin/cursor/arcade-snes-visual-bar-ee5b
+2026-10-01T07:00:09.5427693Z  * [new branch]        cursor/art-direction-concept-fable-20260916-3694 -> origin/cursor/art-direction-concept-fable-20260916-3694
+2026-10-01T07:00:09.5428141Z  * [new branch]        cursor/bench-press-art-8f47              -> origin/cursor/bench-press-art-8f47
+2026-10-01T07:00:09.5428569Z  * [new branch]        cursor/career-integrity-fences-8f47      -> origin/cursor/career-integrity-fences-8f47
+2026-10-01T07:00:09.5428993Z  * [new branch]        cursor/citation-watchlist-scope-8f47     -> origin/cursor/citation-watchlist-scope-8f47
+2026-10-01T07:00:09.5429503Z  * [new branch]        cursor/d2-2-closeout-8f47                -> origin/cursor/d2-2-closeout-8f47
+2026-10-01T07:00:09.5430024Z  * [new branch]        cursor/design-verification-skill-routing-20260912 -> origin/cursor/design-verification-skill-routing-20260912
+2026-10-01T07:00:09.5430478Z  * [new branch]        cursor/drive-copy-tap-8f47               -> origin/cursor/drive-copy-tap-8f47
+2026-10-01T07:00:09.5430879Z  * [new branch]        cursor/empire-ast-scanner-queue-8f47     -> origin/cursor/empire-ast-scanner-queue-8f47
+2026-10-01T07:00:09.5431265Z  * [new branch]        cursor/env-setup-3448                    -> origin/cursor/env-setup-3448
+2026-10-01T07:00:09.5431634Z  * [new branch]        cursor/g2-athlete-season-01-ed20         -> origin/cursor/g2-athlete-season-01-ed20
+2026-10-01T07:00:09.5432022Z  * [new branch]        cursor/g2c1-freeze-ruling-8f47           -> origin/cursor/g2c1-freeze-ruling-8f47
+2026-10-01T07:00:09.5432509Z  * [new branch]        cursor/gate1-concept-to-production-sample-20260916-a382 -> origin/cursor/gate1-concept-to-production-sample-20260916-a382
+2026-10-01T07:00:09.5433040Z  * [new branch]        cursor/gha-conservation-merge-gate-dcb1  -> origin/cursor/gha-conservation-merge-gate-dcb1
+2026-10-01T07:00:09.5433455Z  * [new branch]        cursor/gym-empire-ux-01-8f47             -> origin/cursor/gym-empire-ux-01-8f47
+2026-10-01T07:00:09.5433827Z  * [new branch]        cursor/gym-empire-ux-01-9b73             -> origin/cursor/gym-empire-ux-01-9b73
+2026-10-01T07:00:09.5434224Z  * [new branch]        cursor/hyg-003-career-freeze-pin-8e24    -> origin/cursor/hyg-003-career-freeze-pin-8e24
+2026-10-01T07:00:09.5434640Z  * [new branch]        cursor/hyg-008-readme-claude-eda6        -> origin/cursor/hyg-008-readme-claude-eda6
+2026-10-01T07:00:09.5435086Z  * [new branch]        cursor/illustrated-animated-arcade-20260916 -> origin/cursor/illustrated-animated-arcade-20260916
+2026-10-01T07:00:09.5435625Z  * [new branch]        cursor/illustrated-direct-use-8271       -> origin/cursor/illustrated-direct-use-8271
+2026-10-01T07:00:09.5436087Z  * [new branch]        cursor/illustrated-direct-use-playable-20260916 -> origin/cursor/illustrated-direct-use-playable-20260916
+2026-10-01T07:00:09.5436614Z  * [new branch]        cursor/internal-draw-index-arcade-art-20260916-fa1a -> origin/cursor/internal-draw-index-arcade-art-20260916-fa1a
+2026-10-01T07:00:09.5437087Z  * [new branch]        cursor/iron-amber-arcade-art-607a        -> origin/cursor/iron-amber-arcade-art-607a
+2026-10-01T07:00:09.5437512Z  * [new branch]        cursor/iron-amber-arcade-p1-repair-ed5e  -> origin/cursor/iron-amber-arcade-p1-repair-ed5e
+2026-10-01T07:00:09.5437981Z  * [new branch]        cursor/iron-amber-arcade-v1              -> origin/cursor/iron-amber-arcade-v1
+2026-10-01T07:00:09.5438465Z  * [new branch]        cursor/layout-gauge-stage-slot-ad54      -> origin/cursor/layout-gauge-stage-slot-ad54
+2026-10-01T07:00:09.5438927Z  * [new branch]        cursor/session-a-iron-amber-quality-1c66 -> origin/cursor/session-a-iron-amber-quality-1c66
+2026-10-01T07:00:09.5439372Z  * [new branch]        cursor/session-a-training-fit-01-5989    -> origin/cursor/session-a-training-fit-01-5989
+2026-10-01T07:00:09.5439909Z  * [new branch]        cursor/session-b-iron-amber-presentation-9b73 -> origin/cursor/session-b-iron-amber-presentation-9b73
+2026-10-01T07:00:09.5440365Z  * [new branch]        cursor/session-c-empire-shell-8f47       -> origin/cursor/session-c-empire-shell-8f47
+2026-10-01T07:00:09.5440771Z  * [new branch]        cursor/session-c-merge-flag-8f47         -> origin/cursor/session-c-merge-flag-8f47
+2026-10-01T07:00:09.5441165Z  * [new branch]        cursor/session-lift-picker-8f47          -> origin/cursor/session-lift-picker-8f47
+2026-10-01T07:00:09.5503191Z  * [new branch]        cursor/sf-twl-a2-p1-federation-create-noop-21a8 -> origin/cursor/sf-twl-a2-p1-federation-create-noop-21a8
+2026-10-01T07:00:09.5504266Z  * [new branch]        cursor/sf-twl-g2c3-arrival-rate-c3ac     -> origin/cursor/sf-twl-g2c3-arrival-rate-c3ac
+2026-10-01T07:00:09.5505245Z  * [new branch]        cursor/sf-twl-g2c3-p1-watching-e706      -> origin/cursor/sf-twl-g2c3-p1-watching-e706
+2026-10-01T07:00:09.5505842Z  * [new branch]        cursor/sf-twl-g2d-dues-62c6              -> origin/cursor/sf-twl-g2d-dues-62c6
+2026-10-01T07:00:09.5506404Z  * [new branch]        cursor/sf-twl-g2d-p1-occupancy-5525      -> origin/cursor/sf-twl-g2d-p1-occupancy-5525
+2026-10-01T07:00:09.5507009Z  * [new branch]        cursor/sf-twl-g2e-factory-freeze-9678    -> origin/cursor/sf-twl-g2e-factory-freeze-9678
+2026-10-01T07:00:09.5507620Z  * [new branch]        cursor/sf-twl-g2e-reputation-039d        -> origin/cursor/sf-twl-g2e-reputation-039d
+2026-10-01T07:00:09.5508222Z  * [new branch]        cursor/sf-twl-model-routing-pins-0381    -> origin/cursor/sf-twl-model-routing-pins-0381
+2026-10-01T07:00:09.5508822Z  * [new branch]        cursor/stage-rep-evidence-01-4ff2        -> origin/cursor/stage-rep-evidence-01-4ff2
+2026-10-01T07:00:09.5509486Z  * [new branch]        cursor/twl-visual-gate-harness-01        -> origin/cursor/twl-visual-gate-harness-01
+2026-10-01T07:00:09.5510309Z  * [new branch]        docs/iron-amber-design-reference         -> origin/docs/iron-amber-design-reference
+2026-10-01T07:00:09.5510907Z  * [new branch]        grok-d-audit-debt-closed                 -> origin/grok-d-audit-debt-closed
+2026-10-01T07:00:09.5511473Z  * [new branch]        grok-d-ci-merge-gate                     -> origin/grok-d-ci-merge-gate
+2026-10-01T07:00:09.5512009Z  * [new branch]        grok-d-claudemd-index                    -> origin/grok-d-claudemd-index
+2026-10-01T07:00:09.5512583Z  * [new branch]        grok-d-merge-gate-exists                 -> origin/grok-d-merge-gate-exists
+2026-10-01T07:00:09.5513219Z  * [new branch]        grok/ci-merge-gate-full-history-01       -> origin/grok/ci-merge-gate-full-history-01
+2026-10-01T07:00:09.5514076Z  * [new branch]        grok/hyg-001-guarantee-tags              -> origin/grok/hyg-001-guarantee-tags
+2026-10-01T07:00:09.5514740Z  * [new branch]        grok/integer-scale-fallback-20260918     -> origin/grok/integer-scale-fallback-20260918
+2026-10-01T07:00:09.5515389Z  * [new branch]        grok/iron-amber-arcade                   -> origin/grok/iron-amber-arcade
+2026-10-01T07:00:09.5516010Z  * [new branch]        grok/iron-amber-sport-arcade-20260917    -> origin/grok/iron-amber-sport-arcade-20260917
+2026-10-01T07:00:09.5516719Z  * [new branch]        grok/iron-amber-sprite-sport-20260917    -> origin/grok/iron-amber-sprite-sport-20260917
+2026-10-01T07:00:09.5517384Z  * [new branch]        grok/iron-amber-stage-polish-20260918    -> origin/grok/iron-amber-stage-polish-20260918
+2026-10-01T07:00:09.5518037Z  * [new branch]        grok/iron-amber-visual-polish-20260918   -> origin/grok/iron-amber-visual-polish-20260918
+2026-10-01T07:00:09.5518692Z  * [new branch]        grok/original-sprite-restore-20260918    -> origin/grok/original-sprite-restore-20260918
+2026-10-01T07:00:09.5519340Z  * [new branch]        grok/session-a-career-loop-v1-01         -> origin/grok/session-a-career-loop-v1-01
+2026-10-01T07:00:09.5520176Z  * [new branch]        grok/session-a-integration-baseline-01   -> origin/grok/session-a-integration-baseline-01
+2026-10-01T07:00:09.5520633Z  * [new branch]        grok/session-a-iron-amber-training-art-01 -> origin/grok/session-a-iron-amber-training-art-01
+2026-10-01T07:00:09.5521120Z  * [new branch]        grok/session-a-iron-amber-training-graphics-01 -> origin/grok/session-a-iron-amber-training-graphics-01
+2026-10-01T07:00:09.5521555Z  * [new branch]        grok/session-a-main-loop                 -> origin/grok/session-a-main-loop
+2026-10-01T07:00:09.5521954Z  * [new branch]        grok/session-a-training-progression-01   -> origin/grok/session-a-training-progression-01
+2026-10-01T07:00:09.5522397Z  * [new branch]        grok/session-b-facility-persistence-01   -> origin/grok/session-b-facility-persistence-01
+2026-10-01T07:00:09.5522824Z  * [new branch]        grok/session-b-host-persistence-01       -> origin/grok/session-b-host-persistence-01
+2026-10-01T07:00:09.5523364Z  * [new branch]        grok/session-b-iron-amber-art-01         -> origin/grok/session-b-iron-amber-art-01
+2026-10-01T07:00:09.5523757Z  * [new branch]        grok/session-b-iron-amber-home           -> origin/grok/session-b-iron-amber-home
+2026-10-01T07:00:09.5524146Z  * [new branch]        grok/session-b-living-gym-world          -> origin/grok/session-b-living-gym-world
+2026-10-01T07:00:09.5524566Z  * [new branch]        grok/session-b-occupied-cell-pathing-01  -> origin/grok/session-b-occupied-cell-pathing-01
+2026-10-01T07:00:09.5525011Z  * [new branch]        grok/session-b-presentation-contract     -> origin/grok/session-b-presentation-contract
+2026-10-01T07:00:09.5525437Z  * [new branch]        grok/session-b-stage-c1b-playable-gym    -> origin/grok/session-b-stage-c1b-playable-gym
+2026-10-01T07:00:09.5525834Z  * [new branch]        grok/sf-model-economy-01                 -> origin/grok/sf-model-economy-01
+2026-10-01T07:00:09.5526210Z  * [new branch]        grok/stage-career-empire-rep-01          -> origin/grok/stage-career-empire-rep-01
+2026-10-01T07:00:09.5526608Z  * [new branch]        grok/stage-g2c2-actual-departure         -> origin/grok/stage-g2c2-actual-departure
+2026-10-01T07:00:09.5527012Z  * [new branch]        grok/twl-analysis-attempts-20260918      -> origin/grok/twl-analysis-attempts-20260918
+2026-10-01T07:00:09.5527433Z  * [new branch]        grok/twl-visual-polish-sport-20260918    -> origin/grok/twl-visual-polish-sport-20260918
+2026-10-01T07:00:09.5527791Z  * [new branch]        main                                     -> origin/main
+2026-10-01T07:00:09.5528102Z  * [new branch]        verify-markers/bryant                    -> origin/verify-markers/bryant
+2026-10-01T07:00:09.5528442Z  * [new branch]        verify-markers/cursor                    -> origin/verify-markers/cursor
+2026-10-01T07:00:09.5528863Z  * [new branch]        verify-markers/vm                        -> origin/verify-markers/vm
+2026-10-01T07:00:09.5529187Z  * [new branch]        verify/vm/probe-1                        -> origin/verify/vm/probe-1
+2026-10-01T07:00:09.5529554Z  * [new branch]        worktree-agent-a17b5fc7cc599c6c9         -> origin/worktree-agent-a17b5fc7cc599c6c9
+2026-10-01T07:00:09.5530130Z  * [new branch]        worktree-agent-a236d0026184c2445         -> origin/worktree-agent-a236d0026184c2445
+2026-10-01T07:00:09.5530526Z  * [new branch]        worktree-agent-a4b2e7804df4d6e36         -> origin/worktree-agent-a4b2e7804df4d6e36
+2026-10-01T07:00:09.5530918Z  * [new branch]        worktree-agent-a6df4c35c8be08f31         -> origin/worktree-agent-a6df4c35c8be08f31
+2026-10-01T07:00:09.5531268Z  * [new ref]           5ecc6dfdf89a954f689df0744c66dbc09cb7f8ae -> pull/89/merge
+2026-10-01T07:00:09.5532327Z ##[endgroup]
+2026-10-01T07:00:09.5532586Z ##[group]Determining the checkout info
+2026-10-01T07:00:09.5532871Z ##[endgroup]
+2026-10-01T07:00:09.5533150Z [command]/usr/bin/git sparse-checkout disable
+2026-10-01T07:00:09.5533647Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-01T07:00:09.5534197Z ##[group]Checking out the ref
+2026-10-01T07:00:09.5534436Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/89/merge
+2026-10-01T07:00:09.7394552Z Note: switching to 'refs/remotes/pull/89/merge'.
+2026-10-01T07:00:09.7394849Z 
+2026-10-01T07:00:09.7395034Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-01T07:00:09.7395347Z changes and commit them, and you can discard any commits you make in this
+2026-10-01T07:00:09.7395671Z state without impacting any branches by switching back to a branch.
+2026-10-01T07:00:09.7395846Z 
+2026-10-01T07:00:09.7395967Z If you want to create a new branch to retain commits you create, you may
+2026-10-01T07:00:09.7396261Z do so (now or later) by using -c with the switch command. Example:
+2026-10-01T07:00:09.7396418Z 
+2026-10-01T07:00:09.7396502Z   git switch -c <new-branch-name>
+2026-10-01T07:00:09.7396618Z 
+2026-10-01T07:00:09.7396739Z Or undo this operation with:
+2026-10-01T07:00:09.7397050Z 
+2026-10-01T07:00:09.7397120Z   git switch -
+2026-10-01T07:00:09.7397204Z 
+2026-10-01T07:00:09.7397340Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-01T07:00:09.7397523Z 
+2026-10-01T07:00:09.7397737Z HEAD is now at 5ecc6dfd Merge e57d7ffe35a3b1041303ea482c20435f92af0797 into 42c192cd64cf48ab311ceed9f36020a2198ddeca
+2026-10-01T07:00:09.7440204Z ##[endgroup]
+2026-10-01T07:00:09.7484072Z [command]/usr/bin/git log -1 --format=%H
+2026-10-01T07:00:09.7516094Z 5ecc6dfdf89a954f689df0744c66dbc09cb7f8ae
+2026-10-01T07:00:09.7709605Z ##[group]Run actions/setup-node@v4
+2026-10-01T07:00:09.7710010Z with:
+2026-10-01T07:00:09.7710157Z   node-version: 22
+2026-10-01T07:00:09.7710302Z   cache: npm
+2026-10-01T07:00:09.7710442Z   always-auth: false
+2026-10-01T07:00:09.7710596Z   check-latest: false
+2026-10-01T07:00:09.7712104Z   token: ***
+2026-10-01T07:00:09.7712253Z ##[endgroup]
+2026-10-01T07:00:09.8689834Z (node:2107) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-01T07:00:09.8690678Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-01T07:00:09.8708104Z Found in cache @ /opt/hostedtoolcache/node/22.23.3/x64
+2026-10-01T07:00:09.8709470Z ##[group]Environment details
+2026-10-01T07:00:10.1688128Z node: v22.23.3
+2026-10-01T07:00:10.1701147Z npm: 10.9.9
+2026-10-01T07:00:10.1701358Z yarn: 1.22.22
+2026-10-01T07:00:10.1702160Z ##[endgroup]
+2026-10-01T07:00:10.1702482Z [command]/opt/hostedtoolcache/node/22.23.3/x64/bin/npm config get cache
+2026-10-01T07:00:10.2493356Z /home/runner/.npm
+2026-10-01T07:00:10.3930689Z npm cache is not found
+2026-10-01T07:00:10.4051701Z ##[group]Run npm ci
+2026-10-01T07:00:10.4051910Z [36;1mnpm ci[0m
+2026-10-01T07:00:10.4276385Z shell: /usr/bin/bash -e {0}
+2026-10-01T07:00:10.4276589Z ##[endgroup]
+2026-10-01T07:00:13.2772895Z npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+2026-10-01T07:00:23.0174192Z 
+2026-10-01T07:00:23.0175105Z added 596 packages, and audited 597 packages in 13s
+2026-10-01T07:00:23.0175473Z 
+2026-10-01T07:00:23.0175695Z 67 packages are looking for funding
+2026-10-01T07:00:23.0175982Z   run `npm fund` for details
+2026-10-01T07:00:23.0513976Z 
+2026-10-01T07:00:23.0514712Z 10 moderate severity vulnerabilities
+2026-10-01T07:00:23.0515008Z 
+2026-10-01T07:00:23.0515225Z To address issues that do not require attention, run:
+2026-10-01T07:00:23.0515524Z   npm audit fix
+2026-10-01T07:00:23.0515644Z 
+2026-10-01T07:00:23.0515920Z To address all issues (including breaking changes), run:
+2026-10-01T07:00:23.0516218Z   npm audit fix --force
+2026-10-01T07:00:23.0516344Z 
+2026-10-01T07:00:23.0516455Z Run `npm audit` for details.
+2026-10-01T07:00:23.1309346Z ##[group]Run npm run typecheck
+2026-10-01T07:00:23.1309553Z [36;1mnpm run typecheck[0m
+2026-10-01T07:00:23.1373315Z shell: /usr/bin/bash -e {0}
+2026-10-01T07:00:23.1373484Z ##[endgroup]
+2026-10-01T07:00:23.2096608Z 
+2026-10-01T07:00:23.2097202Z > app@1.0.0 typecheck
+2026-10-01T07:00:23.2097443Z > tsc --noEmit
+2026-10-01T07:00:23.2097533Z 
+2026-10-01T07:00:31.2523720Z ##[group]Run npm test
+2026-10-01T07:00:31.2523887Z [36;1mnpm test[0m
+2026-10-01T07:00:31.2577393Z shell: /usr/bin/bash -e {0}
+2026-10-01T07:00:31.2577555Z ##[endgroup]
+2026-10-01T07:00:31.3260397Z 
+2026-10-01T07:00:31.3261000Z > app@1.0.0 test
+2026-10-01T07:00:31.3261235Z > vitest run
+2026-10-01T07:00:31.3261315Z 
+2026-10-01T07:00:31.7040693Z [33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+2026-10-01T07:00:31.7247165Z   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+2026-10-01T07:00:31.7248357Z Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+2026-10-01T07:00:31.7249364Z 
+2026-10-01T07:00:31.7250300Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/home/runner/work/three-white-lights/three-white-lights[39m
+2026-10-01T07:00:31.7250737Z 
+2026-10-01T07:00:33.2878663Z  [31m❯[39m src/game/guaranteeTags.test.ts [2m([22m[2m15 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1095[2mms[22m[39m
+2026-10-01T07:00:33.2888143Z      [32m✓[39m resolves every tag in the tree to exactly one live test[32m 106[2mms[22m[39m
+2026-10-01T07:00:33.2901496Z      [33m[2m✓[22m[39m makes every tag declared from here carry mutation evidence that is still fresh [33m 318[2mms[22m[39m
+2026-10-01T07:00:33.2902387Z      [32m✓[39m requires a witness transcript to name the test it says reddened [a-witness-transcript-names-its-test][32m 37[2mms[22m[39m
+2026-10-01T07:00:33.2903122Z      [32m✓[39m refuses the two measured collection kills, and each arm of the rule fires alone[32m 31[2mms[22m[39m
+2026-10-01T07:00:33.2903948Z      [32m✓[39m requires a transcript that quotes a measured number to anchor its domain [a-measured-transcript-anchors-its-domain][32m 98[2mms[22m[39m
+2026-10-01T07:00:33.2904764Z      [32m✓[39m makes a witness reproducible by recording what its mutant put in place of what it removed[32m 23[2mms[22m[39m
+2026-10-01T07:00:33.2905462Z      [32m✓[39m drives each arm of the replacement rule alone, on planted rows including a deletion[32m 1[2mms[22m[39m
+2026-10-01T07:00:33.2906137Z      [32m✓[39m counts §4a's kill-list bullets against the mutants witnessed for it[32m 2[2mms[22m[39m
+2026-10-01T07:00:33.2906749Z      [32m✓[39m expires a witness whose anchor has moved, on a planted one[32m 2[2mms[22m[39m
+2026-10-01T07:00:33.2907338Z      [32m✓[39m reads comments and not code, on a sample written to break it[32m 1[2mms[22m[39m
+2026-10-01T07:00:33.2908005Z      [32m✓[39m bans an untagged guarantee inside the scoped files, and FIRES on a planted one[32m 9[2mms[22m[39m
+2026-10-01T07:00:33.2908779Z [31m     [31m×[31m states what fraction of the tree it actually covers, and the number is real[39m[32m 142[2mms[22m[39m
+2026-10-01T07:00:33.2909835Z      [33m[2m✓[22m[39m [a-cited-number-resolves-in-the-named-test] resolves the NUMBERS in a tagged claim against the body of the test it names, with the excuse list exact in both directions [33m 318[2mms[22m[39m
+2026-10-01T07:00:33.2910760Z      [32m✓[39m fires when a cited number is only elsewhere in the named test FILE, and stays silent when it is in the body[32m 1[2mms[22m[39m
+2026-10-01T07:00:33.2911514Z      [32m✓[39m counts a number stated as prose, and not one in a section coordinate, an identifier, quoted code or a list ordinal[32m 0[2mms[22m[39m
+2026-10-01T07:00:43.0034510Z [90mstderr[2m | src/game/progression.test.ts[2m > [22m[2mpurity[2m > [22m[2mrules test fixtures out of §7.5 rather than matching none of them
+2026-10-01T07:00:43.0036216Z [22m[39m[33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+2026-10-01T07:00:43.0040614Z   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+2026-10-01T07:00:43.0070909Z Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+2026-10-01T07:00:43.0071584Z 
+2026-10-01T07:00:43.3148317Z  [32m✓[39m src/game/progression.test.ts [2m([22m[2m143 tests[22m[2m)[22m[33m 9060[2mms[22m[39m
+2026-10-01T07:00:43.3161035Z      [33m[2m✓[22m[39m scans the whole project, not just src/ [33m 8407[2mms[22m[39m
+2026-10-01T07:00:43.3162030Z      [33m[2m✓[22m[39m rules test fixtures out of §7.5 rather than matching none of them [33m 435[2mms[22m[39m
+2026-10-01T07:00:45.4496553Z  [32m✓[39m src/meet/walkout.test.ts [2m([22m[2m58 tests[22m[2m)[22m[33m 1230[2mms[22m[39m
+2026-10-01T07:00:45.4508958Z      [33m[2m✓[22m[39m goes quiet before the bar moves, and ends on the drawing the rep begins from [33m 511[2mms[22m[39m
+2026-10-01T07:00:59.0550387Z  [32m✓[39m src/game/streak.test.ts [2m([22m[2m154 tests[22m[2m)[22m[33m 26542[2mms[22m[39m
+2026-10-01T07:00:59.0560664Z      [33m[2m✓[22m[39m [settling-is-terminal][a-sale-never-follows-a-settle][the-decision-ignores-the-rendered-offer][every-refusal-sentence-is-true-of-its-screen] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary and three render-day lags [33m 4533[2mms[22m[39m
+2026-10-01T07:00:59.0562152Z      [33m[2m✓[22m[39m PROPERTY, EXHAUSTIVE, PROTECTION DECLINED: training an extra day never loses ground [33m 922[2mms[22m[39m
+2026-10-01T07:00:59.0563283Z      [33m[2m✓[22m[39m [monotonicity-exhaustive] MONOTONICITY, EXHAUSTIVE: over every calendar of 8 to 16 days, one more trained day never loses ground [33m 1380[2mms[22m[39m
+2026-10-01T07:00:59.0564421Z      [33m[2m✓[22m[39m MONOTONICITY, SAMPLED: 2000 forty-day and 2000 sixty-day calendars, every single-day superset [33m 2768[2mms[22m[39m
+2026-10-01T07:00:59.0566586Z      [33m[2m✓[22m[39m WAS "THE RESIDUE IS NOT MILESTONE TIMING": the cause is gone, so the counterfactuals cannot be run [33m 1047[2mms[22m[39m
+2026-10-01T07:00:59.0571960Z      [33m[2m✓[22m[39m DOES IT TERMINATE: the residue at 80 and 100 days, with its denominator [33m 7494[2mms[22m[39m
+2026-10-01T07:00:59.0572912Z      [33m[2m✓[22m[39m EVERY CONSUMPTION IS REPORTED — exhaustively, both events, no silent debit anywhere [33m 4526[2mms[22m[39m
+2026-10-01T07:00:59.0573883Z      [33m[2m✓[22m[39m EVERY PENDING CONSUMPTION IS ANNOUNCED BEFORE IT HAPPENS, on every opening kind [33m 2306[2mms[22m[39m
+2026-10-01T07:00:59.0574945Z      [33m[2m✓[22m[39m [one-streak-mapping] ONE MAPPING: every DayOpening answers what recordTrainingDay will actually do [33m 560[2mms[22m[39m
+2026-10-01T07:02:03.9374203Z  [31m❯[39m src/game/streakEntitlement.test.ts [2m([22m[2m47 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 64131[2mms[22m[39m
+2026-10-01T07:02:03.9375645Z      [32m✓[39m is a pure module: no clock, no randomness, no React[32m 2[2mms[22m[39m
+2026-10-01T07:02:03.9376415Z      [32m✓[39m has exactly the fields the allowlist names[32m 1[2mms[22m[39m
+2026-10-01T07:02:03.9377173Z      [32m✓[39m anchors its windows at the signup day, not at a calendar month[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9390881Z      [32m✓[39m gives every lifter the same entitlement at the start of every window[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9391688Z      [32m✓[39m covers an absence it can afford and consumes exactly the chargeable days[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9392627Z      [32m✓[39m BURNS THE REST OF THE WINDOW on an absence it cannot afford[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9393558Z      [32m✓[39m caps what ONE absence may draw, separately from the window rate[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9394285Z      [32m✓[39m spends the granted entitlement before the purchased one[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9395479Z      [32m✓[39m expires a purchased covered day with its window — nothing accumulates[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9397883Z      [32m✓[39m a purchase can never buy through the per-absence ceiling[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9398479Z      [32m✓[39m refuses nonsense rather than absorbing it[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9399363Z      [32m✓[39m never mutates the state it is given[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9400384Z      [32m✓[39m lands in a different counter from a free covered day, and that is the provenance[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9401332Z      [32m✓[39m [one-source-credits-a-purchased-day] is credited by EXACTLY ONE source, and that source is the purchase[32m 1[2mms[22m[39m
+2026-10-01T07:02:03.9402256Z      [32m✓[39m refuses a source that is not one of the two, rather than defaulting to the free side[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9403406Z      [32m✓[39m SPENDS IDENTICALLY: the split is invisible to every decision, at every split of every sum[32m 25[2mms[22m[39m
+2026-10-01T07:02:03.9404338Z      [32m✓[39m AND `resolveEntitlement` HAS NOWHERE TO PUT A SOURCE — three arguments, and the state is one[32m 1[2mms[22m[39m
+2026-10-01T07:02:03.9405644Z [31m     [31m×[31m [the-covered-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a covered day is listed, from anywhere under src/[39m[33m 5373[2mms[22m[39m
+2026-10-01T07:02:03.9407209Z [31m     [31m×[31m [the-covered-day-scan-follows-aliases] AN ALIASED IMPORT NO LONGER HIDES A GRANTER: identifiers are resolved through the checker[39m[32m 45[2mms[22m[39m
+2026-10-01T07:02:03.9408280Z      [33m[2m✓[22m[39m THE RE-ALIAS SHAPE IS CAUGHT TOO, and the shape that is NOT is a declared limit [33m 4452[2mms[22m[39m
+2026-10-01T07:02:03.9428276Z      [32m✓[39m THE THREE RESOLVERS DO NOT DRIFT: the alias step is present in every file that resolves a symbol[32m 2[2mms[22m[39m
+2026-10-01T07:02:03.9432929Z [31m     [31m×[31m AND THE SCAN LEAVES src/game/ — every directory under src/ is reached, and the matching files are pinned[39m[32m 3[2mms[22m[39m
+2026-10-01T07:02:03.9434324Z [31m     [31m×[31m THE PREDICATE WAS CHOSEN BY MEASUREMENT: four candidates, and the two that look sufficient are not[39m[32m 136[2mms[22m[39m
+2026-10-01T07:02:03.9435360Z      [32m✓[39m AND THE SCAN CAN SEE A NEW ONE: it is not matching nothing, on BOTH halves of the predicate[32m 1[2mms[22m[39m
+2026-10-01T07:02:03.9436237Z      [32m✓[39m the entitlement module exports no way to earn one — the only credit needs a source[32m 0[2mms[22m[39m
+2026-10-01T07:02:03.9437123Z      [33m[2m✓[22m[39m NEGATIVE CONTROLS: the harness can see a violation when there is one [33m 1629[2mms[22m[39m
+2026-10-01T07:02:03.9438128Z      [33m[2m✓[22m[39m [dropping-the-doomed-burn-measures-worse] DROPPING THE DOOMED BURN, RE-TAKEN AND PINNED AT EVERY LENGTH [33m 6324[2mms[22m[39m
+2026-10-01T07:02:03.9439074Z      [33m[2m✓[22m[39m EXHAUSTIVE: every calendar of 8 to 16 days, both fields [33m 3814[2mms[22m[39m
+2026-10-01T07:02:03.9440016Z      [33m[2m✓[22m[39m EXHAUSTIVE, ACROSS A WINDOW BOUNDARY: the same calendars at a 7-day window [33m 8039[2mms[22m[39m
+2026-10-01T07:02:03.9440864Z      [33m[2m✓[22m[39m SAMPLED: 40, 60, 80 and 100 days — including the LIFETIME BEST [33m 3061[2mms[22m[39m
+2026-10-01T07:02:03.9441602Z      [33m[2m✓[22m[39m MAGNITUDE AT LONG HORIZONS: 200 and 400 days [33m 7046[2mms[22m[39m
+2026-10-01T07:02:03.9442269Z      [33m[2m✓[22m[39m POPULATIONS the seeded generator does not reach [33m 487[2mms[22m[39m
+2026-10-01T07:02:03.9443087Z      [33m[2m✓[22m[39m EVERY TUNING IN THE GRID: a playtester must not be able to turn the property off [33m 5855[2mms[22m[39m
+2026-10-01T07:02:03.9443991Z      [33m[2m✓[22m[39m THE FREE GRANT PATH cannot itself create a violation [33m 4769[2mms[22m[39m
+2026-10-01T07:02:03.9445125Z      [33m[2m✓[22m[39m EVERY FUNDABLE TENDER, EVERY HORIZON: 0 violations across the whole legal funding surface [33m 6750[2mms[22m[39m
+2026-10-01T07:02:03.9446104Z      [33m[2m✓[22m[39m STRUCTURALLY, NOT EMPIRICALLY: a legal tender's purchase DAYS do not move when a lifter trains more [33m 328[2mms[22m[39m
+2026-10-01T07:02:03.9447110Z      [33m[2m✓[22m[39m NEGATIVE CONTROL, MATCHED: the SAME purse violates once training can move the purchase day [33m 1582[2mms[22m[39m
+2026-10-01T07:02:03.9448064Z      [32m✓[39m AND EVERY BANNED TENDER VIOLATES, so the restriction is drawn where the hazard is[32m 239[2mms[22m[39m
+2026-10-01T07:02:03.9448997Z      [33m[2m✓[22m[39m A BANKABLE purchase is training-keyed-unsafe in the same way, so the choice is still a product one [33m 497[2mms[22m[39m
+2026-10-01T07:02:03.9450093Z      [33m[2m✓[22m[39m A BANKABLE purchase is ALSO safe — expiry is a product choice, not a safety property [33m 2751[2mms[22m[39m
+2026-10-01T07:02:03.9451217Z      [33m[2m✓[22m[39m ADVERSARIAL SEARCH: hill-climbs towards a violation instead of waiting for one [33m 533[2mms[22m[39m
+2026-10-01T07:02:03.9451960Z      [32m✓[39m agrees EXHAUSTIVELY on every calendar of 8 to 13 days[32m 201[2mms[22m[39m
+2026-10-01T07:02:03.9452667Z      [32m✓[39m agrees on the sampled calendars the battery is scored on, at every length[32m 53[2mms[22m[39m
+2026-10-01T07:02:03.9453456Z      [32m✓[39m agrees at long horizons and at attendance rates the seeded generator does not reach[32m 52[2mms[22m[39m
+2026-10-01T07:02:03.9454183Z      [32m✓[39m agrees on the shapes a calendar generator does not produce[32m 1[2mms[22m[39m
+2026-10-01T07:02:03.9454918Z      [32m✓[39m agrees WITH PURCHASES IN THE FIELD, which is what makes §8.3E's table transfer[32m 56[2mms[22m[39m
+2026-10-01T07:02:03.9455666Z      [32m✓[39m DETECTS A DIFFERENCE: the pin is not comparing two copies of one engine[32m 8[2mms[22m[39m
+2026-10-01T07:02:09.5082265Z  [32m✓[39m src/shell/shellWiring.test.ts [2m([22m[2m63 tests[22m[2m)[22m[33m 4079[2mms[22m[39m
+2026-10-01T07:02:09.5090992Z      [33m[2m✓[22m[39m EVERY file in the repository that mounts the shell hands it the URL [33m 389[2mms[22m[39m
+2026-10-01T07:02:09.5092078Z      [33m[2m✓[22m[39m and the file that does is one the app actually boots into [33m 1656[2mms[22m[39m
+2026-10-01T07:02:09.5093274Z      [33m[2m✓[22m[39m a federation confirmed through the career half is on the snapshot the session half opens [33m 553[2mms[22m[39m
+2026-10-01T07:02:09.5094463Z      [33m[2m✓[22m[39m a meet recorded through it is visible to the session half, on one row [a-meet-total-reaches-the-session-half] [33m 607[2mms[22m[39m
+2026-10-01T07:02:11.7371384Z  [32m✓[39m src/empire/empireCore.test.ts [2m([22m[2m56 tests[22m[2m)[22m[33m 1789[2mms[22m[39m
+2026-10-01T07:02:11.7372249Z      [33m[2m✓[22m[39m finds every exported producer of a brand, and says how much it looked at [33m 1661[2mms[22m[39m
+2026-10-01T07:02:30.2377111Z [90mstdout[2m | src/art/lifterSprite.test.ts[2m > [22m[2mthe reference is measured, not remembered[2m > [22m[2mstates the reference figures it is comparing against, in one place
+2026-10-01T07:02:30.2421849Z [22m[39msprite-ref-1 256x224, 94 colours, 100.00% on the SNES 5-bit lattice
+2026-10-01T07:02:30.2451354Z wrestler box 66,113 46x45 -> 967 px
+2026-10-01T07:02:30.2451954Z   mean luma            130.16
+2026-10-01T07:02:30.2452377Z   near-black           3.83%
+2026-10-01T07:02:30.2452724Z   interior keyline     2.79%
+2026-10-01T07:02:30.2453110Z   upper 430 px mean 137.99 near-black 1.40%
+2026-10-01T07:02:30.2453534Z   lower 537 px mean 123.89 near-black 5.77%
+2026-10-01T07:02:30.2454533Z   upper/lower mean     1.1138
+2026-10-01T07:02:30.2500424Z   keyline verdict      20.00% of 45 lit crossings -> keylined=false
+2026-10-01T07:02:30.2520352Z head box 84,115 -> 109 px, mean 121.87, interior keyline 3.67%
+2026-10-01T07:02:30.2529890Z REFERENCE-DERIVED BOUNDS — no multiplier, no percentile, no chosen box.
+2026-10-01T07:02:30.2531109Z   Whole figure, straight comparison against the numbers above:
+2026-10-01T07:02:30.2531652Z     interior keyline           < 2.79%
+2026-10-01T07:02:30.2532048Z     raw near-black             < 3.83%
+2026-10-01T07:02:30.2532462Z     upper/lower mean ratio     > 1 (his is 1.1138)
+2026-10-01T07:02:30.2533002Z   Per limb, against the worst patch of HIS SKIN of the same pixel count:
+2026-10-01T07:02:30.2533634Z     n   patches  minMeanPos  maxFloor  minMedian  meanBreak  meanIslet  medAtFloor
+2026-10-01T07:02:30.2534218Z     12     824   0.083      0.583       0       0.640      0.398      0.013
+2026-10-01T07:02:30.2534721Z     20     824   0.130      0.550       0       0.635      0.329      0.001
+2026-10-01T07:02:30.2535225Z     28     824   0.150      0.429       1       0.631      0.325      0.000
+2026-10-01T07:02:30.2535904Z     36     824   0.194      0.389       1       0.628      0.306      0.000
+2026-10-01T07:02:30.2536395Z     44     824   0.223      0.386       1       0.628      0.302      0.000
+2026-10-01T07:02:30.2536893Z     52     824   0.238      0.365       1       0.627      0.296      0.000
+2026-10-01T07:02:30.2537388Z     60     824   0.250      0.350       1       0.629      0.291      0.000
+2026-10-01T07:02:30.2537881Z     70     824   0.249      0.329       1       0.631      0.291      0.000
+2026-10-01T07:02:30.2538331Z   OURS, over the whole sweep, per window:
+2026-10-01T07:02:30.2539024Z     head        n 46-54  meanPos 0.473-0.660  floor 0.041-0.220  break 0.324-0.562  islet 0.000-0.122  median 1-2  floor vs ref -0.120 under
+2026-10-01T07:02:30.2540156Z     neck        n 12-42  meanPos 0.354-0.667  floor 0.000-0.250  break 0.227-0.632  islet 0.000-0.400  median 1-2  floor vs ref -0.167 under
+2026-10-01T07:02:30.2541068Z     left arm    n 24-64  meanPos 0.321-0.500  floor 0.095-0.407  break 0.327-0.553  islet 0.000-0.188  median 1-2  floor vs ref +0.017 OVER
+2026-10-01T07:02:30.2541977Z     right arm   n 35-70  meanPos 0.279-0.415  floor 0.200-0.405  break 0.288-0.451  islet 0.000-0.102  median 1-1  floor vs ref +0.040 OVER
+2026-10-01T07:02:30.2542891Z     left hand   n 29-34  meanPos 0.312-0.376  floor 0.258-0.379  break 0.327-0.574  islet 0.000-0.219  median 1-1  floor vs ref -0.059 under
+2026-10-01T07:02:30.2543811Z     right hand  n 30-34  meanPos 0.275-0.365  floor 0.212-0.382  break 0.354-0.480  islet 0.000-0.156  median 1-1  floor vs ref -0.029 under
+2026-10-01T07:02:30.2544743Z OURS-ONLY RATCHETS, not reference comparisons — we keep a keyline and it does not:
+2026-10-01T07:02:30.2545282Z   upper near-black           < 24.00%
+2026-10-01T07:02:30.2545673Z   lower near-black           < 32.00%
+2026-10-01T07:02:30.2546063Z   upper/lower mean ratio     < 1.45
+2026-10-01T07:02:30.2546348Z 
+2026-10-01T07:02:34.8201707Z  [32m✓[39m src/art/lifterSprite.test.ts [2m([22m[2m73 tests[22m[2m)[22m[33m 18224[2mms[22m[39m
+2026-10-01T07:02:34.8204380Z      [33m[2m✓[22m[39m carries that range BELOW the belt as well as above it [33m 363[2mms[22m[39m
+2026-10-01T07:02:34.8205370Z      [33m[2m✓[22m[39m separates material from keyline by taking off the outline and nothing else [33m 829[2mms[22m[39m
+2026-10-01T07:02:34.8206375Z      [33m[2m✓[22m[39m draws the same pixels the silhouette probe predicts, capsule for capsule [33m 1788[2mms[22m[39m
+2026-10-01T07:02:34.8207413Z      [33m[2m✓[22m[39m leaves the arm outline identical from the cone to a 3.8 biceps, row for row [33m 2496[2mms[22m[39m
+2026-10-01T07:02:34.8208353Z      [33m[2m✓[22m[39m moves the outline by one px in 16 rows of 14,260 at a cartoon 4.0 biceps [33m 967[2mms[22m[39m
+2026-10-01T07:02:34.8209971Z      [33m[2m✓[22m[39m never lets the upper arm out past the fist, even at the cartoon radius [33m 4899[2mms[22m[39m
+2026-10-01T07:02:34.8214841Z      [33m[2m✓[22m[39m KNOWN GAP: an arm spends more of itself on the ramp floor than the reference ever does [33m 577[2mms[22m[39m
+2026-10-01T07:02:34.8250880Z      [33m[2m✓[22m[39m upscales by exact pixel replication [33m 1998[2mms[22m[39m
+2026-10-01T07:02:34.8252220Z      [33m[2m✓[22m[39m finds a sleeve, a thigh and a shin to compare at every pose [33m 695[2mms[22m[39m
+2026-10-01T07:02:34.8254539Z      [33m[2m✓[22m[39m never out-values the bare leg it is worn on, by area, anywhere in the pose space [33m 668[2mms[22m[39m
+2026-10-01T07:02:34.8255383Z      [33m[2m✓[22m[39m keeps the bent leg lit by area, not only at lockout [33m 661[2mms[22m[39m
+2026-10-01T07:03:14.3703751Z  [32m✓[39m src/game/lift.test.ts [2m([22m[2m157 tests[22m[2m)[22m[33m 161895[2mms[22m[39m
+2026-10-01T07:03:14.3750359Z      [33m[2m✓[22m[39m flips outcomes between a controlled touch and a crashed one, across the sweep [bench-touch-decides-the-rep] [33m 571[2mms[22m[39m
+2026-10-01T07:03:14.3751994Z      [33m[2m✓[22m[39m flips outcomes across the tap ladder, across the sweep [bench-grind-decides-the-rep] [33m 654[2mms[22m[39m
+2026-10-01T07:03:14.3753834Z      [33m[2m✓[22m[39m rescues a stalled bar across every load the game can prescribe [a-stalled-bench-can-be-ground-through] [33m 10904[2mms[22m[39m
+2026-10-01T07:03:14.3755199Z      [33m[2m✓[22m[39m never loses a warm-up rep to a player who answered and then stopped [a-warm-up-survives-being-abandoned] [33m 67542[2mms[22m[39m
+2026-10-01T07:03:14.3756142Z      [33m[2m✓[22m[39m never rewards tapping slower, across the sweep [33m 684[2mms[22m[39m
+2026-10-01T07:03:14.3757079Z      [33m[2m✓[22m[39m re-derives the crash-penalty comparison’s shipped row on its own named domain [33m 5341[2mms[22m[39m
+2026-10-01T07:03:14.3758088Z      [33m[2m✓[22m[39m leaves a warm-up alone — nobody answers at all [a-warm-up-makes-it-unanswered] [33m 641[2mms[22m[39m
+2026-10-01T07:03:14.3759035Z      [33m[2m✓[22m[39m moves the working rungs' tap floors and leaves the warm-ups without one [33m 44813[2mms[22m[39m
+2026-10-01T07:03:14.3760067Z      [33m[2m✓[22m[39m never costs a rep to a player at the sim's own tap ceiling, per rung [33m 3467[2mms[22m[39m
+2026-10-01T07:03:14.3761253Z      [33m[2m✓[22m[39m cannot put a reachable cell above the max-effort wall without raising the ceiling [33m 1168[2mms[22m[39m
+2026-10-01T07:03:14.3762253Z      [33m[2m✓[22m[39m never lets a heavier bench bar play easier [a-heavier-bench-is-never-easier] [33m 18710[2mms[22m[39m
+2026-10-01T07:03:14.3763201Z      [33m[2m✓[22m[39m keeps the false-start rule inside every reachable cell at the shipped cap [33m 1063[2mms[22m[39m
+2026-10-01T07:03:14.3764215Z      [33m[2m✓[22m[39m flips outcomes between holding the lockout and letting go, across the sweep [33m 505[2mms[22m[39m
+2026-10-01T07:03:14.3765192Z      [33m[2m✓[22m[39m never rewards letting go, and loses the bar exactly when the sag arithmetic says so [33m 2171[2mms[22m[39m
+2026-10-01T07:03:33.3284664Z  [32m✓[39m src/cutin/cutInWiring.test.ts [2m([22m[2m47 tests[22m[2m)[22m[33m 18284[2mms[22m[39m
+2026-10-01T07:03:33.3301616Z      [33m[2m✓[22m[39m THE WALK REACHES EVERY MODULE UNDER `src/`, and the patterns match a real caller [33m 465[2mms[22m[39m
+2026-10-01T07:03:33.3311123Z      [33m[2m✓[22m[39m the ceiling is the tree, not a preference — CLAIM_GAP cannot simply be raised [33m 3091[2mms[22m[39m
+2026-10-01T07:03:33.3312102Z      [33m[2m✓[22m[39m NO FILE IN THE TREE SAYS THE CUT-IN’S PICTURE IS THE PANEL [33m 1569[2mms[22m[39m
+2026-10-01T07:03:33.3313080Z      [33m[2m✓[22m[39m AND EVERY ONE OF THOSE FILES REALLY YIELDED PROSE TO READ [33m 2805[2mms[22m[39m
+2026-10-01T07:03:33.3313962Z      [33m[2m✓[22m[39m THE SET OF FILES THAT TALK TO THE GATE IS THIS SET — derived, not restated [33m 9067[2mms[22m[39m
+2026-10-01T07:03:33.3314833Z      [33m[2m✓[22m[39m AND THE SET OF SCREENS THAT CLAIM A SITTING IS THE TWO LOOPS [33m 594[2mms[22m[39m
+2026-10-01T07:03:33.3315732Z      [33m[2m✓[22m[39m the reader can see a two-kind call when there is one, and sees every call [33m 567[2mms[22m[39m
+2026-10-01T07:03:36.2967788Z  [32m✓[39m src/art/gymScene.test.ts [2m([22m[2m83 tests[22m[2m)[22m[33m 2327[2mms[22m[39m
+2026-10-01T07:03:36.3021426Z      [33m[2m✓[22m[39m keeps the bright wall colours out of it, on the rendered pixels [33m 347[2mms[22m[39m
+2026-10-01T07:03:36.3022309Z      [33m[2m✓[22m[39m still covers the grid when the camera has moved a long way [33m 451[2mms[22m[39m
+2026-10-01T07:03:36.5149062Z  [32m✓[39m src/game/dots.test.ts [2m([22m[2m155 tests[22m[2m)[22m[32m 66[2mms[22m[39m
+2026-10-01T07:03:37.0785386Z  [32m✓[39m src/game/meet.test.ts [2m([22m[2m133 tests[22m[2m)[22m[33m 415[2mms[22m[39m
+2026-10-01T07:03:44.6338341Z  [32m✓[39m src/art/spriteMarks.test.ts [2m([22m[2m32 tests[22m[2m)[22m[33m 7382[2mms[22m[39m
+2026-10-01T07:03:44.6339464Z      [33m[2m✓[22m[39m puts a large, counted number of authored pixels into every frame [33m 791[2mms[22m[39m
+2026-10-01T07:03:44.6341161Z      [33m[2m✓[22m[39m puts most of those pixels on FLESH, not on worn kit [33m 696[2mms[22m[39m
+2026-10-01T07:03:44.6342197Z      [33m[2m✓[22m[39m lands EVERY mark, kit and flesh, on most of the pixels it asks for — per side [33m 724[2mms[22m[39m
+2026-10-01T07:03:44.6343068Z      [33m[2m✓[22m[39m has no dead mark: every one lands somewhere in the pose space [33m 678[2mms[22m[39m
+2026-10-01T07:03:44.6343914Z      [33m[2m✓[22m[39m lands the always-on objects on EVERY frame, not just somewhere [33m 763[2mms[22m[39m
+2026-10-01T07:03:44.6344790Z      [33m[2m✓[22m[39m is eaten on the far side by the ARM, because the seam is authored unmirrored [33m 699[2mms[22m[39m
+2026-10-01T07:03:44.6345593Z      [33m[2m✓[22m[39m gives the face a mouth and both eyes at every depth [33m 667[2mms[22m[39m
+2026-10-01T07:03:44.6346341Z      [33m[2m✓[22m[39m would lose authored pixels if despeckle ran after them [33m 739[2mms[22m[39m
+2026-10-01T07:03:44.6347131Z      [33m[2m✓[22m[39m reports placements that agree with the finished grid [33m 1426[2mms[22m[39m
+2026-10-01T07:03:46.6199007Z  [32m✓[39m src/empire/empireInvariant.test.ts [2m([22m[2m55 tests[22m[2m)[22m[32m 67[2mms[22m[39m
+2026-10-01T07:03:48.1400266Z  [32m✓[39m src/game/meetDay.test.ts [2m([22m[2m84 tests[22m[2m)[22m[33m 1299[2mms[22m[39m
+2026-10-01T07:03:48.6583054Z  [32m✓[39m src/game/meetServer.test.ts [2m([22m[2m91 tests[22m[2m)[22m[32m 274[2mms[22m[39m
+2026-10-01T07:03:58.5361619Z  [32m✓[39m src/shell/empireFloor.test.ts [2m([22m[2m24 tests[22m[2m)[22m[33m 9746[2mms[22m[39m
+2026-10-01T07:03:58.5362863Z      [33m[2m✓[22m[39m the CUMULATIVE readings never go backwards, at four minutes and at twelve and twenty-four hours [33m 877[2mms[22m[39m
+2026-10-01T07:03:58.5364166Z      [33m[2m✓[22m[39m an extra visit changes nothing at the horizons where the gym SPENDS, either [33m 2408[2mms[22m[39m
+2026-10-01T07:03:58.5365333Z      [33m[2m✓[22m[39m and an extra visit AIMED at the instant the gym commits its money changes nothing either [33m 2577[2mms[22m[39m
+2026-10-01T07:03:58.5366700Z      [33m[2m✓[22m[39m past the cap, a schedule with more looks never lands behind — and strictly ahead is live [past-the-cap-more-looks-never-land-behind] [33m 2479[2mms[22m[39m
+2026-10-01T07:03:58.5367930Z      [33m[2m✓[22m[39m a jump of any size owes at most the cap: one day to one year all land on the same gym [33m 347[2mms[22m[39m
+2026-10-01T07:03:58.5368908Z      [33m[2m✓[22m[39m read once a day for five days, every reading still moves the right way [33m 457[2mms[22m[39m
+2026-10-01T07:03:59.0809545Z  [32m✓[39m src/game/fatigue.test.ts [2m([22m[2m75 tests[22m[2m)[22m[33m 319[2mms[22m[39m
+2026-10-01T07:03:59.5105046Z  [32m✓[39m src/card/renderResultCard.test.ts [2m([22m[2m71 tests[22m[2m)[22m[32m 142[2mms[22m[39m
+2026-10-01T07:03:59.7213640Z  [32m✓[39m src/game/sessionServer.test.ts [2m([22m[2m56 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+2026-10-01T07:04:03.5441704Z  [32m✓[39m src/licensing/realIp.test.ts [2m([22m[2m58 tests[22m[2m)[22m[33m 1165[2mms[22m[39m
+2026-10-01T07:04:03.7098305Z  [32m✓[39m src/game/liftTuning.test.ts [2m([22m[2m67 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+2026-10-01T07:04:17.2141882Z  [32m✓[39m tools/verifyMarker.test.ts [2m([22m[2m30 tests[22m[2m)[22m[33m 13395[2mms[22m[39m
+2026-10-01T07:04:17.2142919Z      [33m[2m✓[22m[39m leaves it standing when the command outruns its budget [33m 1082[2mms[22m[39m
+2026-10-01T07:04:17.2143858Z      [33m[2m✓[22m[39m refuses to answer on a machine with no /proc rather than passing the marker [33m 883[2mms[22m[39m
+2026-10-01T07:04:17.2144721Z      [33m[2m✓[22m[39m is on the remote, INCOMPLETE, with the wrapper still running [33m 465[2mms[22m[39m
+2026-10-01T07:04:17.2145924Z      [33m[2m✓[22m[39m keeps pushing on a heartbeat, so a record found cold dates the last sign of life [33m 1403[2mms[22m[39m
+2026-10-01T07:04:17.2147487Z      [33m[2m✓[22m[39m THE INCIDENT: the marker directory is destroyed and --markers still reports the run, from origin [33m 613[2mms[22m[39m
+2026-10-01T07:04:17.2148398Z      [33m[2m✓[22m[39m clears BOTH copies of a record that is in both places, in one pass [33m 1491[2mms[22m[39m
+2026-10-01T07:04:17.2149147Z      [33m[2m✓[22m[39m leaves a passing run PASS in both places, and green [33m 387[2mms[22m[39m
+2026-10-01T07:04:17.2150058Z      [33m[2m✓[22m[39m does not fail the verification it is recording, and says so on stderr [33m 314[2mms[22m[39m
+2026-10-01T07:04:17.2150928Z      [33m[2m✓[22m[39m reports another host's interrupted run and does not count it, and counts its own [33m 423[2mms[22m[39m
+2026-10-01T07:04:17.2151753Z      [33m[2m✓[22m[39m lands three concurrent runs on one host ref without losing any [33m 1234[2mms[22m[39m
+2026-10-01T07:04:17.2152605Z      [33m[2m✓[22m[39m never prunes an INCOMPLETE record off the host ref, however many verdicts pile up [33m 819[2mms[22m[39m
+2026-10-01T07:04:17.2153538Z      [33m[2m✓[22m[39m writes and reads ONE local cache ref, because the mapping is derived and not respelled [33m 351[2mms[22m[39m
+2026-10-01T07:04:17.2154402Z      [33m[2m✓[22m[39m reports markers inside --branches and lets one decide its exit code [33m 1426[2mms[22m[39m
+2026-10-01T07:04:17.2155268Z      [33m[2m✓[22m[39m finds no interrupted verification in this repository or on its origin right now [33m 436[2mms[22m[39m
+2026-10-01T07:04:17.8251647Z  [32m✓[39m src/game/session.test.ts [2m([22m[2m82 tests[22m[2m)[22m[33m 344[2mms[22m[39m
+2026-10-01T07:04:18.0233742Z  [32m✓[39m src/empire/expansion.test.ts [2m([22m[2m35 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+2026-10-01T07:04:18.5431659Z  [32m✓[39m src/lift/liftFrame.test.ts [2m([22m[2m60 tests[22m[2m)[22m[33m 375[2mms[22m[39m
+2026-10-01T07:04:18.8590756Z  [32m✓[39m src/empire/reputation.test.ts [2m([22m[2m38 tests[22m[2m)[22m[32m 163[2mms[22m[39m
+2026-10-01T07:04:28.8006491Z  [32m✓[39m src/tuning/audit.test.ts [2m([22m[2m56 tests[22m[2m)[22m[33m 9397[2mms[22m[39m
+2026-10-01T07:04:28.8007783Z      [33m[2m✓[22m[39m preserves every offset in every real file [33m 397[2mms[22m[39m
+2026-10-01T07:04:28.8018172Z      [33m[2m✓[22m[39m `onlyComments` and `withoutComments` PARTITION EVERY REAL FILE, character for character [33m 2080[2mms[22m[39m
+2026-10-01T07:04:28.8019406Z      [33m[2m✓[22m[39m AND A REAL PARSER AGREES ABOUT WHERE THE COMMENTS ARE — everywhere in the tree [33m 3348[2mms[22m[39m
+2026-10-01T07:04:28.8020668Z      [33m[2m✓[22m[39m ...AND THE EMPTY LIST IS A MEASUREMENT: the same check still catches the old substitution [33m 2736[2mms[22m[39m
+2026-10-01T07:04:28.8021598Z      [33m[2m✓[22m[39m finds nothing anywhere in the repository [33m 778[2mms[22m[39m
+2026-10-01T07:04:28.9844177Z  [32m✓[39m src/game/rpe.test.ts [2m([22m[2m70 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+2026-10-01T07:04:29.5715292Z  [32m✓[39m src/meet/meetStage.test.ts [2m([22m[2m38 tests[22m[2m)[22m[33m 364[2mms[22m[39m
+2026-10-01T07:04:29.9284972Z  [32m✓[39m src/empire/recruitment.test.ts [2m([22m[2m38 tests[22m[2m)[22m[32m 193[2mms[22m[39m
+2026-10-01T07:04:30.2181568Z  [32m✓[39m src/empire/production.test.ts [2m([22m[2m47 tests[22m[2m)[22m[32m 133[2mms[22m[39m
+2026-10-01T07:04:30.4137684Z  [32m✓[39m src/game/resultCard.test.ts [2m([22m[2m76 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+2026-10-01T07:04:31.3895972Z  [32m✓[39m src/empire/social.test.ts [2m([22m[2m51 tests[22m[2m)[22m[33m 822[2mms[22m[39m
+2026-10-01T07:04:31.3897285Z      [33m[2m✓[22m[39m moves the session-keyed control, so the zeroes above are zero against something [33m 335[2mms[22m[39m
+2026-10-01T07:04:31.6001538Z  [32m✓[39m src/cutin/cutInGate.test.ts [2m([22m[2m57 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+2026-10-01T07:04:32.4023715Z  [32m✓[39m src/shell/shellRoute.test.ts [2m([22m[2m68 tests[22m[2m)[22m[33m 638[2mms[22m[39m
+2026-10-01T07:04:36.8754089Z  [32m✓[39m src/lift/liftInput.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 4001[2mms[22m[39m
+2026-10-01T07:04:36.8757049Z      [33m[2m✓[22m[39m the census: how many surfaces there are, and what they are called [33m 987[2mms[22m[39m
+2026-10-01T07:04:36.8758156Z      [33m[2m✓[22m[39m every stage sits inside something a finger can press [33m 462[2mms[22m[39m
+2026-10-01T07:04:36.8759208Z      [33m[2m✓[22m[39m the pressed element declares the property that does NOT inherit [press-guard-on-every-played-surface] [33m 598[2mms[22m[39m
+2026-10-01T07:04:36.8760365Z      [33m[2m✓[22m[39m an ancestor of every stage declares the two that DO inherit [33m 595[2mms[22m[39m
+2026-10-01T07:04:36.8761350Z      [33m[2m✓[22m[39m an ancestor of every stage spreads the context-menu guard [context-menu-guard-on-every-played-surface] [33m 590[2mms[22m[39m
+2026-10-01T07:04:36.8762558Z      [33m[2m✓[22m[39m every press target spreads the no-press-delay guard, so a fast tap is an input [no-press-surface-swallows-a-fast-tap] [33m 402[2mms[22m[39m
+2026-10-01T07:04:36.8763632Z      [33m[2m✓[22m[39m NON-VACUITY: the four checks above walked a real list, and the count is exact [33m 326[2mms[22m[39m
+2026-10-01T07:04:37.5237521Z  [32m✓[39m tools/testPathRefs.test.ts [2m([22m[2m28 tests[22m[2m)[22m[33m 529[2mms[22m[39m
+2026-10-01T07:04:37.7264535Z  [32m✓[39m src/game/e1rm.test.ts [2m([22m[2m116 tests[22m[2m)[22m[32m 94[2mms[22m[39m
+2026-10-01T07:04:38.1771462Z  [32m✓[39m src/meet/meetSound.test.ts [2m([22m[2m45 tests[22m[2m)[22m[32m 297[2mms[22m[39m
+2026-10-01T07:04:38.3298964Z  [32m✓[39m src/empire/empireTuning.test.ts [2m([22m[2m39 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+2026-10-01T07:04:38.4809989Z  [32m✓[39m src/game/sessionClient.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+2026-10-01T07:04:38.8382206Z  [32m✓[39m src/game/careerServer.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 225[2mms[22m[39m
+2026-10-01T07:04:38.9660710Z  [32m✓[39m src/game/onboardingDisclosure.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+2026-10-01T07:04:39.1394332Z  [32m✓[39m src/game/meetTuning.test.ts [2m([22m[2m39 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+2026-10-01T07:04:41.0830787Z  [32m✓[39m src/career/careerPurity.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 1633[2mms[22m[39m
+2026-10-01T07:04:41.0861076Z      [33m[2m✓[22m[39m qualifiesFor and its siblings close over no mutable binding [33m 644[2mms[22m[39m
+2026-10-01T07:04:41.0893267Z      [33m[2m✓[22m[39m reddens on the M12 plant: a module-level let that qualifiesFor reads [33m 437[2mms[22m[39m
+2026-10-01T07:04:41.0894390Z      [33m[2m✓[22m[39m reddens on a sibling let read through import * as, which is the same wallet with a property access [33m 379[2mms[22m[39m
+2026-10-01T07:04:42.2580626Z  [32m✓[39m src/art/benchPress.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 275[2mms[22m[39m
+2026-10-01T07:04:42.7706214Z [90mstderr[2m | src/session/localSessionServer.test.ts[2m > [22m[2mthe row survives a reload (Sprint 2)[2m > [22m[2ma save this build cannot read is QUARANTINED before the fresh lifter can overwrite it
+2026-10-01T07:04:42.7721537Z [22m[39mlocalSessionServer: the stored save was refused (NOT_JSON: save is not JSON — SyntaxError: Unexpected token 'o', "not a save at all" is not valid JSON); starting a fresh lifter — the refused bytes are quarantined
+2026-10-01T07:04:42.7738177Z  [32m✓[39m src/session/localSessionServer.test.ts [2m([22m[2m24 tests[22m[2m)[22m[33m 319[2mms[22m[39m
+2026-10-01T07:04:42.7750267Z 
+2026-10-01T07:04:42.7781359Z [90mstderr[2m | src/session/localSessionServer.test.ts[2m > [22m[2mthe row survives a reload (Sprint 2)[2m > [22m[2mA SAVE FROM THE FUTURE is refused into quarantine under FUTURE_VERSION — a newer lifter waits for the app, never dies to it
+2026-10-01T07:04:42.7791304Z [22m[39mlocalSessionServer: the stored save was refused (FUTURE_VERSION: save is schema version 3 and this build reads up to 2 — refusing rather than guessing at a future shape); starting a fresh lifter — the refused bytes are quarantined
+2026-10-01T07:04:42.7818475Z 
+2026-10-01T07:04:42.7819594Z [90mstderr[2m | src/session/localSessionServer.test.ts[2m > [22m[2mthe row survives a reload (Sprint 2)[2m > [22m[2ma store that THROWS does not take the mutation down with it
+2026-10-01T07:04:42.7820886Z [22m[39mlocalSessionServer: persisting the row failed — Error: QuotaExceededError: the disk is full
+2026-10-01T07:04:42.7821453Z 
+2026-10-01T07:04:42.9197414Z  [32m✓[39m src/art/craftMetrics.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+2026-10-01T07:04:43.0860565Z  [32m✓[39m src/art/raster.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+2026-10-01T07:04:43.2413537Z  [32m✓[39m src/empire/npc.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+2026-10-01T07:04:43.8313693Z  [32m✓[39m src/meet/AttemptSelectView.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 421[2mms[22m[39m
+2026-10-01T07:04:44.0127785Z  [32m✓[39m src/game/sessionTuning.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+2026-10-01T07:04:44.2543047Z  [32m✓[39m tools/devServerSentinel.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 92[2mms[22m[39m
+2026-10-01T07:04:44.4922211Z  [32m✓[39m src/cutin/cutInArt.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 83[2mms[22m[39m
+2026-10-01T07:04:45.0108264Z  [32m✓[39m tools/testBudget.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 424[2mms[22m[39m
+2026-10-01T07:04:45.1455368Z  [32m✓[39m src/session/sessionPreview.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+2026-10-01T07:04:45.4362457Z  [32m✓[39m src/art/squatAnimation.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 180[2mms[22m[39m
+2026-10-01T07:04:45.5477546Z  [32m✓[39m src/art/gymPalette.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+2026-10-01T07:04:45.7033154Z  [32m✓[39m src/meet/careerSurface.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+2026-10-01T07:04:45.8188043Z  [32m✓[39m src/career/careerTuning.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+2026-10-01T07:04:46.3040950Z [90mstdout[2m | src/game/benchSurplus.test.ts[2m > [22m[2mC3 surplus compression[2m > [22m[2morders RPE 8 < 9 < 10 at committed ~70 ms and closes the coast
+2026-10-01T07:04:46.3042124Z [22m[39mRPE 8 40ms make=1 grind=1 good=0 miss=0 ascent=80.0 stall=0.0 minVel=0.0098 F=1.000 U=0.833 pips=12.0
+2026-10-01T07:04:46.3042957Z RPE 8 70ms make=1 grind=1 good=0 miss=0 ascent=85.4 stall=0.0 minVel=0.0089 F=0.951 U=0.806 pips=11.3
+2026-10-01T07:04:46.3043697Z RPE 8 100ms make=1 grind=1 good=0 miss=0 ascent=105.0 stall=0.0 minVel=0.0065 F=0.840 U=0.745 pips=10.5
+2026-10-01T07:04:46.3044433Z RPE 9 40ms make=1 grind=1 good=0 miss=0 ascent=86.0 stall=0.0 minVel=0.0087 F=1.000 U=0.885 pips=12.0
+2026-10-01T07:04:46.3045626Z RPE 9 70ms make=1 grind=1 good=0 miss=0 ascent=92.1 stall=0.0 minVel=0.0078 F=0.951 U=0.858 pips=12.0
+2026-10-01T07:04:46.3046375Z RPE 9 100ms make=1 grind=1 good=0 miss=0 ascent=116.0 stall=0.0 minVel=0.0054 F=0.840 U=0.797 pips=11.3
+2026-10-01T07:04:46.3047092Z RPE 10 40ms make=1 grind=1 good=0 miss=0 ascent=90.0 stall=0.0 minVel=0.0080 F=1.000 U=1.000 pips=14.0
+2026-10-01T07:04:46.3047780Z RPE 10 70ms make=1 grind=1 good=0 miss=0 ascent=101.9 stall=0.0 minVel=0.0064 F=0.953 U=0.953 pips=13.4
+2026-10-01T07:04:46.3048492Z RPE 10 100ms make=1 grind=1 good=0 miss=0 ascent=167.0 stall=3.0 minVel=0.0023 F=0.842 U=0.842 pips=11.9
+2026-10-01T07:04:46.3049026Z coast8 miss=1 grind=0 make=0 ascent=116.0
+2026-10-01T07:04:46.3049413Z coast9 miss=1 grind=0 make=0 ascent=109.0
+2026-10-01T07:04:46.3050233Z 
+2026-10-01T07:04:46.3064075Z  [32m✓[39m src/game/benchSurplus.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 363[2mms[22m[39m
+2026-10-01T07:04:46.3067954Z      [33m[2m✓[22m[39m orders RPE 8 < 9 < 10 at committed ~70 ms and closes the coast [33m 349[2mms[22m[39m
+2026-10-01T07:04:46.4402047Z  [32m✓[39m src/empire/engagement.test.ts [2m([22m[2m55 tests[22m[2m)[22m[33m 240482[2mms[22m[39m
+2026-10-01T07:04:46.4421398Z      [33m[2m✓[22m[39m measures the shipped engine, and BOTH halves are zero [33m 6971[2mms[22m[39m
+2026-10-01T07:04:46.4422358Z      [33m[2m✓[22m[39m measures the SINGLE-PURSE engine on the same domain, and it is not zero [33m 5953[2mms[22m[39m
+2026-10-01T07:04:46.4423297Z      [33m[2m✓[22m[39m measures chain A re-connected, as the control the physio zero is zero against [33m 8589[2mms[22m[39m
+2026-10-01T07:04:46.4424132Z      [33m[2m✓[22m[39m finds no violation when the same window sits at day 4 [33m 914[2mms[22m[39m
+2026-10-01T07:04:46.4424983Z      [33m[2m✓[22m[39m finds no violation, on a physio domain that is no longer empty [33m 4063[2mms[22m[39m
+2026-10-01T07:04:46.4425813Z      [33m[2m✓[22m[39m finds no violation when the extra engagement is a whole day [33m 4333[2mms[22m[39m
+2026-10-01T07:04:46.4426556Z      [33m[2m✓[22m[39m reproduces the finding at 20 and 40 days [33m 3793[2mms[22m[39m
+2026-10-01T07:04:46.4427244Z      [33m[2m✓[22m[39m reproduces the finding at 60 and 100 days [33m 9672[2mms[22m[39m
+2026-10-01T07:04:46.4428083Z      [33m[2m✓[22m[39m pins all three controls above the shipped engine on the grid it is measured on [33m 4102[2mms[22m[39m
+2026-10-01T07:04:46.4428998Z      [33m[2m✓[22m[39m is zero on every arm of the shipped engine and 566 on the same arm pre-ruling [33m 6177[2mms[22m[39m
+2026-10-01T07:04:46.4430043Z      [33m[2m✓[22m[39m measures the rotation phase removed: fixed order, and cheapest-first with it [33m 24030[2mms[22m[39m
+2026-10-01T07:04:46.4430934Z      [33m[2m✓[22m[39m measures the ordering reversed: costliest affordable first [33m 17516[2mms[22m[39m
+2026-10-01T07:04:46.4431759Z      [33m[2m✓[22m[39m explains the save-for-physio zero instead of repeating it [33m 14970[2mms[22m[39m
+2026-10-01T07:04:46.4432648Z      [33m[2m✓[22m[39m measures the per-check-in granularity removed, and that arm is zero too now [33m 10621[2mms[22m[39m
+2026-10-01T07:04:46.4433892Z      [33m[2m✓[22m[39m splits that arm by whether the extra check-in moved the day it spends at [a-filled-slot-is-not-a-one-way-door] [a-slot-costs-the-same-by-every-route] [33m 3959[2mms[22m[39m
+2026-10-01T07:04:46.4435038Z      [33m[2m✓[22m[39m closes the five that survived the purses, against the roster as it was [33m 3819[2mms[22m[39m
+2026-10-01T07:04:46.4436130Z      [33m[2m✓[22m[39m holds the decision moment and the other arm goes to zero too [the-day-granularity-residue-is-the-decision-moment] [33m 11572[2mms[22m[39m
+2026-10-01T07:04:46.4437309Z      [33m[2m✓[22m[39m pins every day anchor on the shipped wiring, and only one of the four is zero [the-day-shops-purse-by-purse] [33m 8864[2mms[22m[39m
+2026-10-01T07:04:46.4438757Z      [33m[2m✓[22m[39m pins every day anchor on the single-purse control, where all four are non-zero [33m 8091[2mms[22m[39m
+2026-10-01T07:04:46.4439825Z      [33m[2m✓[22m[39m splits the shipped anchor by WHEN a purse can first afford, and counts what that misses [33m 6966[2mms[22m[39m
+2026-10-01T07:04:46.4440808Z      [33m[2m✓[22m[39m keeps §5.3's promotion path load-bearing at the shipped anchor: 824 without it [33m 6159[2mms[22m[39m
+2026-10-01T07:04:46.4441820Z      [33m[2m✓[22m[39m takes the shipped anchor to a second exhaustive domain: every calendar of a coarse grid [33m 2203[2mms[22m[39m
+2026-10-01T07:04:46.4442724Z      [33m[2m✓[22m[39m pins the four anchors on a seeded domain too, at 20 and 40 days [33m 8827[2mms[22m[39m
+2026-10-01T07:04:46.4443485Z      [33m[2m✓[22m[39m finds all six policies zero at 20 seeded days [33m 4077[2mms[22m[39m
+2026-10-01T07:04:46.4444371Z      [33m[2m✓[22m[39m finds all six policies zero at 40 seeded days [33m 9055[2mms[22m[39m
+2026-10-01T07:04:46.4445143Z      [33m[2m✓[22m[39m takes the whole-day reading under the first three policies [33m 6007[2mms[22m[39m
+2026-10-01T07:04:46.4445986Z      [33m[2m✓[22m[39m takes the whole-day reading under the last three, and all six are zero [33m 9167[2mms[22m[39m
+2026-10-01T07:04:46.4446801Z      [33m[2m✓[22m[39m measures the day anchor on the same window moved to day 4 [33m 2096[2mms[22m[39m
+2026-10-01T07:04:46.4447586Z      [33m[2m✓[22m[39m measures the day anchor on seeded histories at 60 days [33m 10940[2mms[22m[39m
+2026-10-01T07:04:46.4448364Z      [33m[2m✓[22m[39m measures the day anchor on seeded histories at 100 days [33m 16675[2mms[22m[39m
+2026-10-01T07:04:46.4571831Z  [32m✓[39m src/meet/meetFeel.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+2026-10-01T07:04:46.5669243Z  [32m✓[39m src/empire/empireSweep.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+2026-10-01T07:04:46.5781615Z  [32m✓[39m src/game/currencyProvenance.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+2026-10-01T07:04:46.7611771Z  [32m✓[39m src/game/saveGame.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+2026-10-01T07:04:46.8851590Z  [32m✓[39m src/licensing/tiers.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+2026-10-01T07:04:46.9051136Z  [32m✓[39m tools/treeIdentity.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 213[2mms[22m[39m
+2026-10-01T07:04:47.2889388Z  [32m✓[39m src/licensing/spriteKit.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 226[2mms[22m[39m
+2026-10-01T07:04:47.4100977Z  [32m✓[39m src/meet/useMeetDay.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+2026-10-01T07:04:47.6328313Z  [32m✓[39m src/meet/meetIdentity.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+2026-10-01T07:04:47.7736837Z  [32m✓[39m src/art/palette.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+2026-10-01T07:04:47.8342863Z  [32m✓[39m src/card/pixelFont.test.ts [2m([22m[2m25 tests[22m[2m)[22m[33m 832[2mms[22m[39m
+2026-10-01T07:04:47.8361227Z      [33m[2m✓[22m[39m keeps capitals and digits out of the descender rows [33m 786[2mms[22m[39m
+2026-10-01T07:04:47.9391526Z  [32m✓[39m src/licensing/catalogue.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+2026-10-01T07:04:48.0564600Z  [32m✓[39m src/art/spriteTuning.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+2026-10-01T07:04:48.0880890Z  [32m✓[39m src/game/streakSweep.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 127[2mms[22m[39m
+2026-10-01T07:04:48.2347698Z  [32m✓[39m src/game/meetField.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+2026-10-01T07:04:48.2561801Z  [32m✓[39m src/licensing/partners.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+2026-10-01T07:04:48.4883743Z  [32m✓[39m src/meet/meetHall.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 102[2mms[22m[39m
+2026-10-01T07:04:48.5201859Z  [32m✓[39m src/lift/liftReplay.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 140[2mms[22m[39m
+2026-10-01T07:04:48.6918102Z  [32m✓[39m src/licensing/renderPanels.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+2026-10-01T07:04:48.7072747Z  [32m✓[39m src/game/meetClient.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+2026-10-01T07:04:48.8217835Z  [32m✓[39m src/career/calendar.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+2026-10-01T07:04:48.9568321Z  [32m✓[39m src/game/a0LiftFreeze.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+2026-10-01T07:04:49.0609676Z  [32m✓[39m src/session/lifterPersist.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+2026-10-01T07:04:49.0664989Z  [32m✓[39m src/session/sessionWiring.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+2026-10-01T07:04:49.1746388Z  [32m✓[39m src/card/paperSheet.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+2026-10-01T07:04:49.1882151Z  [32m✓[39m tools/evidenceFilters.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+2026-10-01T07:04:49.2823894Z  [32m✓[39m src/game/lifterProfile.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+2026-10-01T07:04:49.3161903Z  [32m✓[39m src/cutin/cutInLedger.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+2026-10-01T07:04:49.4635579Z  [32m✓[39m src/game/meetBoard.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+2026-10-01T07:04:49.5895763Z  [32m✓[39m src/art/deadliftPull.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 190[2mms[22m[39m
+2026-10-01T07:04:49.6008866Z  [32m✓[39m src/card/sheetPalette.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+2026-10-01T07:04:49.7134481Z  [32m✓[39m src/cutin/cutInObserver.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+2026-10-01T07:04:49.9805410Z  [32m✓[39m src/game/resultFlight.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+2026-10-01T07:04:50.1645016Z  [32m✓[39m src/meet/lifterSurface.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+2026-10-01T07:04:50.2660228Z  [32m✓[39m src/session/ironAmberWiring.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+2026-10-01T07:04:50.3966894Z  [32m✓[39m src/art/plates.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+2026-10-01T07:04:50.4030474Z  [32m✓[39m tools/processHazardHook.test.ts [2m([22m[2m25 tests[22m[2m)[22m[33m 677[2mms[22m[39m
+2026-10-01T07:04:50.5246086Z  [32m✓[39m tools/liftLadders.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+2026-10-01T07:04:50.5441446Z  [32m✓[39m src/cutin/cutInPreview.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+2026-10-01T07:04:50.6714400Z  [32m✓[39m src/session/ironAmberPlates.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+2026-10-01T07:04:50.6852424Z  [32m✓[39m src/meet/ironAmberHall.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+2026-10-01T07:04:50.7767996Z  [32m✓[39m tools/claudeIndex.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+2026-10-01T07:04:50.8391785Z  [32m✓[39m src/game/careerMeet.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+2026-10-01T07:04:50.8962036Z  [32m✓[39m src/career/federation.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+2026-10-01T07:04:50.9481491Z  [32m✓[39m src/game/lifterEntry.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+2026-10-01T07:04:51.0621757Z  [32m✓[39m src/game/a2LifterFreeze.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+2026-10-01T07:04:51.0877314Z  [32m✓[39m src/game/meetCommand.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+2026-10-01T07:04:51.2721016Z  [32m✓[39m src/game/prng.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 94[2mms[22m[39m
+2026-10-01T07:04:51.3837525Z  [32m✓[39m src/game/meetLedger.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+2026-10-01T07:04:51.4759358Z  [32m✓[39m src/production/server.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+2026-10-01T07:04:56.6565176Z  [32m✓[39m src/career/eligibility.test.ts [2m([22m[2m45 tests[22m[2m)[22m[33m 141349[2mms[22m[39m
+2026-10-01T07:04:56.6565823Z      [33m[2m✓[22m[39m [attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it [33m 2327[2mms[22m[39m
+2026-10-01T07:04:56.6566457Z      [33m[2m✓[22m[39m reaches a current-form rule that waits, and reports two different kinds of zero past it [33m 4124[2mms[22m[39m
+2026-10-01T07:04:56.6567517Z      [33m[2m✓[22m[39m sees a rule keyed to the annual tier now that totals stop above it, and the margin is -10 kg [33m 3219[2mms[22m[39m
+2026-10-01T07:04:56.6568101Z      [33m[2m✓[22m[39m every skipped meet in every seeded season, against a rest control and three tier-keyed ones [33m 77278[2mms[22m[39m
+2026-10-01T07:04:56.6568626Z      [33m[2m✓[22m[39m is blind at axis B’s evaluation lag, which is why it has its own [33m 53024[2mms[22m[39m
+2026-10-01T07:04:56.6569121Z      [33m[2m✓[22m[39m takes every simulated arc to a campaign summit, which neither unfixed calendar does [33m 372[2mms[22m[39m
+2026-10-01T07:04:56.6640295Z 
+2026-10-01T07:04:56.6641094Z [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+2026-10-01T07:04:56.6641396Z 
+2026-10-01T07:04:56.6642182Z [41m[1m FAIL [22m[49m src/game/guaranteeTags.test.ts[2m > [22mthe guarantee-tag convention[2m > [22mstates what fraction of the tree it actually covers, and the number is real
+2026-10-01T07:04:56.6643820Z [31m[1mAssertionError[22m: triggering paragraphs under src: expected 315 to be 314 // Object.is equality[39m
+2026-10-01T07:04:56.6644326Z 
+2026-10-01T07:04:56.6644555Z [32m- Expected[39m
+2026-10-01T07:04:56.6644909Z [31m+ Received[39m
+2026-10-01T07:04:56.6645135Z 
+2026-10-01T07:04:56.6645337Z [32m- 314[39m
+2026-10-01T07:04:56.6645630Z [31m+ 315[39m
+2026-10-01T07:04:56.6645833Z 
+2026-10-01T07:04:56.6646236Z [36m [2m❯[22m src/game/guaranteeTags.test.ts:[2m6373:57[22m[39m
+2026-10-01T07:04:56.6670345Z     [90m6371|[39m       }
+2026-10-01T07:04:56.6670849Z     [90m6372|[39m     }
+2026-10-01T07:04:56.6671455Z     [90m6373|[39m     expect(treeWide, 'triggering paragraphs under src').toBe(GUARANTEE…
+2026-10-01T07:04:56.6672096Z     [90m   |[39m                                                         [31m^[39m
+2026-10-01T07:04:56.6672752Z     [90m6374|[39m     // Stated as a fraction so the honest reading is unavoidable: this…
+2026-10-01T07:04:56.6673397Z     [90m6375|[39m     // minority of what it can see, and a minority of what it cannot s…
+2026-10-01T07:04:56.6673853Z 
+2026-10-01T07:04:56.6674175Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[39m
+2026-10-01T07:04:56.6676487Z 
+2026-10-01T07:04:56.6678294Z [41m[1m FAIL [22m[49m src/game/streakEntitlement.test.ts[2m > [22mnothing can award a purchased covered day, and that is enforced rather than absent[2m > [22m[the-covered-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a covered day is listed, from anywhere under src/
+2026-10-01T07:04:56.6682826Z [31m[1mAssertionError[22m: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS does not list: facility/sessions.ts::GymPurchase, facility/sessions.ts::GymRun, facility/sessions.ts::runGym: expected [ 'ACCELERANT_ARRIVAL', …(110) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(107) ][39m
+2026-10-01T07:04:56.6684157Z 
+2026-10-01T07:04:56.6684450Z [32m- Expected[39m
+2026-10-01T07:04:56.6684815Z [31m+ Received[39m
+2026-10-01T07:04:56.6685067Z 
+2026-10-01T07:04:56.6685346Z [33m@@ -35,10 +35,12 @@[39m
+2026-10-01T07:04:56.6685780Z [2m    "EntitlementOutcome",[22m
+2026-10-01T07:04:56.6686211Z [2m    "EntitlementState",[22m
+2026-10-01T07:04:56.6686909Z [2m    "EntitlementTuning",[22m
+2026-10-01T07:04:56.6687333Z [2m    "FORBIDDEN_UNLOCK_KEYS",[22m
+2026-10-01T07:04:56.6687745Z [2m    "GatingOfTender",[22m
+2026-10-01T07:04:56.6688122Z [31m+   "GymPurchase",[39m
+2026-10-01T07:04:56.6688484Z [31m+   "GymRun",[39m
+2026-10-01T07:04:56.6688907Z [2m    "LONGEST_REPAIRABLE_ABSENCE_DAYS",[22m
+2026-10-01T07:04:56.6689413Z [2m    "MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW",[22m
+2026-10-01T07:04:56.6690077Z [2m    "MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE",[22m
+2026-10-01T07:04:56.6690545Z [2m    "MONOTONICITY_SWEEP",[22m
+2026-10-01T07:04:56.6690986Z [2m    "MoneyCarryingProposalKind",[22m
+2026-10-01T07:04:56.6691420Z [33m@@ -99,10 +101,11 @@[39m
+2026-10-01T07:04:56.6691827Z [2m    "purchaseArrivalOf",[22m
+2026-10-01T07:04:56.6692384Z [2m    "purchasesMade",[22m
+2026-10-01T07:04:56.6692789Z [2m    "recordTrainingDay",[22m
+2026-10-01T07:04:56.6693205Z [2m    "resolveEntitlement",[22m
+2026-10-01T07:04:56.6693603Z [2m    "runEngagement",[22m
+2026-10-01T07:04:56.6693968Z [31m+   "runGym",[39m
+2026-10-01T07:04:56.6694381Z [2m    "setRecoveryDayProtection",[22m
+2026-10-01T07:04:56.6694817Z [2m    "settleBrokenStreak",[22m
+2026-10-01T07:04:56.6695197Z [2m    "stepGym",[22m
+2026-10-01T07:04:56.6695564Z [2m    "tenderGating",[22m
+2026-10-01T07:04:56.6695949Z [2m    "windowIndexOf",[22m
+2026-10-01T07:04:56.6696210Z 
+2026-10-01T07:04:56.6696693Z [36m [2m❯[22m src/game/streakEntitlement.test.ts:[2m1671:32[22m[39m
+2026-10-01T07:04:56.6697220Z     [90m1669|[39m       .join(' | ');
+2026-10-01T07:04:56.6697588Z     [90m1670|[39m
+2026-10-01T07:04:56.6698127Z     [90m1671|[39m     expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTI…
+2026-10-01T07:04:56.6698740Z     [90m   |[39m                                [31m^[39m
+2026-10-01T07:04:56.6699409Z     [90m1672|[39m     // THE ALLOWLIST ITSELF HAS NO DUPLICATES. `found.names` is dedupl…
+2026-10-01T07:04:56.6700201Z     [90m1673|[39m     // it has to be, because the list is of bare names and two files m…
+2026-10-01T07:04:56.6700594Z 
+2026-10-01T07:04:56.6700926Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[39m
+2026-10-01T07:04:56.6701218Z 
+2026-10-01T07:04:56.6702654Z [41m[1m FAIL [22m[49m src/game/streakEntitlement.test.ts[2m > [22mnothing can award a purchased covered day, and that is enforced rather than absent[2m > [22m[the-covered-day-scan-follows-aliases] AN ALIASED IMPORT NO LONGER HIDES A GRANTER: identifiers are resolved through the checker
+2026-10-01T07:04:56.6704136Z [31m[1mAssertionError[22m: expected 111 to be 108 // Object.is equality[39m
+2026-10-01T07:04:56.6704527Z 
+2026-10-01T07:04:56.6704759Z [32m- Expected[39m
+2026-10-01T07:04:56.6705096Z [31m+ Received[39m
+2026-10-01T07:04:56.6705321Z 
+2026-10-01T07:04:56.6705540Z [32m- 108[39m
+2026-10-01T07:04:56.6705851Z [31m+ 111[39m
+2026-10-01T07:04:56.6706071Z 
+2026-10-01T07:04:56.6706485Z [36m [2m❯[22m src/game/streakEntitlement.test.ts:[2m1721:51[22m[39m
+2026-10-01T07:04:56.6707189Z     [90m1719|[39m     expect(symbolOnly).toEqual([...COVERED_DAY_SYMBOL_SCAN.SYMBOL_ONLY…
+2026-10-01T07:04:56.6707942Z     [90m1720|[39m     expect(COVERED_DAY_SYMBOL_SCAN.SYMBOL_ONLY_NAMES.length).toBeGreat…
+2026-10-01T07:04:56.6708678Z     [90m1721|[39m     expect(textualNames.size + symbolOnly.length).toBe(COVERED_DAY_SYM…
+2026-10-01T07:04:56.6709291Z     [90m   |[39m                                                   [31m^[39m
+2026-10-01T07:04:56.6709830Z     [90m1722|[39m
+2026-10-01T07:04:56.6710344Z     [90m1723|[39m     // THE BAR THIS TEST EXISTS FOR. A declaration that reaches the co…
+2026-10-01T07:04:56.6710732Z 
+2026-10-01T07:04:56.6711053Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[39m
+2026-10-01T07:04:56.6711347Z 
+2026-10-01T07:04:56.6712822Z [41m[1m FAIL [22m[49m src/game/streakEntitlement.test.ts[2m > [22mnothing can award a purchased covered day, and that is enforced rather than absent[2m > [22mAND THE SCAN LEAVES src/game/ — every directory under src/ is reached, and the matching files are pinned
+2026-10-01T07:04:56.6714782Z [31m[1mAssertionError[22m: top-level directories under src/: art, audio, card, career, cutin, empire, facility, game, licensing, lift, meet, production, session, shell, tuning, ui: expected 16 to be 14 // Object.is equality[39m
+2026-10-01T07:04:56.6715627Z 
+2026-10-01T07:04:56.6715852Z [32m- Expected[39m
+2026-10-01T07:04:56.6716188Z [31m+ Received[39m
+2026-10-01T07:04:56.6716416Z 
+2026-10-01T07:04:56.6716632Z [32m- 14[39m
+2026-10-01T07:04:56.6716942Z [31m+ 16[39m
+2026-10-01T07:04:56.6717153Z 
+2026-10-01T07:04:56.6717570Z [36m [2m❯[22m src/game/streakEntitlement.test.ts:[2m1884:85[22m[39m
+2026-10-01T07:04:56.6718281Z     [90m1882|[39m     // that makes the comparison below mean something, and it is the l…
+2026-10-01T07:04:56.6719091Z     [90m1883|[39m     // top-level directory has to come and edit.
+2026-10-01T07:04:56.6719857Z     [90m1884|[39m     expect(onDisk.length, `top-level directories under src/: ${onDisk.…
+2026-10-01T07:04:56.6720560Z     [90m   |[39m                                                                                     [31m^[39m
+2026-10-01T07:04:56.6720841Z 
+2026-10-01T07:04:56.6721171Z     [90m1885|[39m       PURCHASED_DAY_SCAN.SOURCE_DIRECTORIES,
+2026-10-01T07:04:56.6721590Z     [90m1886|[39m     );
+2026-10-01T07:04:56.6721821Z 
+2026-10-01T07:04:56.6722128Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯[22m[39m
+2026-10-01T07:04:56.6722403Z 
+2026-10-01T07:04:56.6723615Z [41m[1m FAIL [22m[49m src/game/streakEntitlement.test.ts[2m > [22mnothing can award a purchased covered day, and that is enforced rather than absent[2m > [22mTHE PREDICATE WAS CHOSEN BY MEASUREMENT: four candidates, and the two that look sufficient are not
+2026-10-01T07:04:56.6724869Z [31m[1mAssertionError[22m: expected [ 102, 16 ] to deeply equal [ 99, 11 ][39m
+2026-10-01T07:04:56.6725264Z 
+2026-10-01T07:04:56.6725494Z [32m- Expected[39m
+2026-10-01T07:04:56.6725839Z [31m+ Received[39m
+2026-10-01T07:04:56.6726078Z 
+2026-10-01T07:04:56.6726290Z [2m  [[22m
+2026-10-01T07:04:56.6726598Z [32m-   99,[39m
+2026-10-01T07:04:56.6726919Z [32m-   11,[39m
+2026-10-01T07:04:56.6727242Z [31m+   102,[39m
+2026-10-01T07:04:56.6727747Z [2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m113 passed[39m[22m[90m (115)[39m
+2026-10-01T07:04:56.6728232Z [31m+   16,[39m
+2026-10-01T07:04:56.6728517Z [2m  ][22m
+2026-10-01T07:04:56.6728766Z 
+2026-10-01T07:04:56.6729228Z [36m [2m❯[22m src/game/streakEntitlement.test.ts:[2m1915:60[22m[39m
+2026-10-01T07:04:56.6730011Z     [90m1913|[39m     const narrow = matchesIn(PURCHASED_DAY_SCAN.NAMES_THE_COUNTER_OR_T…
+2026-10-01T07:04:56.6730385Z     [90m1914|[39m
+2026-10-01T07:04:56.6730777Z     [90m1915|[39m     expect([coverage.names.length, coverage.files.length]).toEqual([
+2026-10-01T07:04:56.6731290Z     [90m   |[39m                                                            [31m^[39m
+2026-10-01T07:04:56.6731719Z     [90m1916|[39m       ...PURCHASED_DAY_SCAN.COVERAGE_FOUND,
+2026-10-01T07:04:56.6732020Z     [90m1917|[39m     ]);
+2026-10-01T07:04:56.6732143Z 
+2026-10-01T07:04:56.6732355Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯[22m[39m
+2026-10-01T07:04:56.6732587Z 
+2026-10-01T07:04:56.6750895Z [2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m3966 passed[39m[22m[90m (3971)[39m
+2026-10-01T07:04:56.6751471Z [2m   Start at [22m 07:00:31
+2026-10-01T07:04:56.6752311Z [2m   Duration [22m 264.93s[2m (transform 4.64s, setup 0ms, import 23.63s, tests 749.79s, environment 7ms)[22m
+2026-10-01T07:04:56.6752697Z 
+2026-10-01T07:04:56.6768878Z 
+2026-10-01T07:04:56.6788396Z ##[error]AssertionError: triggering paragraphs under src: expected 315 to be 314 // Object.is equality
+
+- Expected
++ Received
+
+- 314
++ 315
+
+ ❯ src/game/guaranteeTags.test.ts:6373:57
+
+
+2026-10-01T07:04:56.6793974Z 
+2026-10-01T07:04:56.6798281Z ##[error]AssertionError: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS does not list: facility/sessions.ts::GymPurchase, facility/sessions.ts::GymRun, facility/sessions.ts::runGym: expected [ 'ACCELERANT_ARRIVAL', …(110) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(107) ]
+
+- Expected
++ Received
+
+@@ -35,10 +35,12 @@
+    "EntitlementOutcome",
+    "EntitlementState",
+    "EntitlementTuning",
+    "FORBIDDEN_UNLOCK_KEYS",
+    "GatingOfTender",
++   "GymPurchase",
++   "GymRun",
+    "LONGEST_REPAIRABLE_ABSENCE_DAYS",
+    "MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW",
+    "MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE",
+    "MONOTONICITY_SWEEP",
+    "MoneyCarryingProposalKind",
+@@ -99,10 +101,11 @@
+    "purchaseArrivalOf",
+    "purchasesMade",
+    "recordTrainingDay",
+    "resolveEntitlement",
+    "runEngagement",
++   "runGym",
+    "setRecoveryDayProtection",
+    "settleBrokenStreak",
+    "stepGym",
+    "tenderGating",
+    "windowIndexOf",
+
+ ❯ src/game/streakEntitlement.test.ts:1671:32
+
+
+2026-10-01T07:04:56.6801887Z 
+2026-10-01T07:04:56.6803273Z ##[error]AssertionError: expected 111 to be 108 // Object.is equality
+
+- Expected
++ Received
+
+- 108
++ 111
+
+ ❯ src/game/streakEntitlement.test.ts:1721:51
+
+
+2026-10-01T07:04:56.6804128Z 
+2026-10-01T07:04:56.6806399Z ##[error]AssertionError: top-level directories under src/: art, audio, card, career, cutin, empire, facility, game, licensing, lift, meet, production, session, shell, tuning, ui: expected 16 to be 14 // Object.is equality
+
+- Expected
++ Received
+
+- 14
++ 16
+
+ ❯ src/game/streakEntitlement.test.ts:1884:85
+
+
+2026-10-01T07:04:56.6807655Z 
+2026-10-01T07:04:56.6808950Z ##[error]AssertionError: expected [ 102, 16 ] to deeply equal [ 99, 11 ]
+
+- Expected
++ Received
+
+  [
+-   99,
+-   11,
++   102,
++   16,
+  ]
+
+ ❯ src/game/streakEntitlement.test.ts:1915:60
+
+
+2026-10-01T07:04:56.7285759Z ##[error]Process completed with exit code 1.
+2026-10-01T07:04:56.7425316Z Post job cleanup.
+2026-10-01T07:04:56.7973487Z [command]/usr/bin/git version
+2026-10-01T07:04:56.8004530Z git version 2.55.0
+2026-10-01T07:04:56.8028110Z Temporarily overriding HOME='/home/runner/work/_temp/9724de18-26e2-473b-89be-c123c1332efb' before making global git config changes
+2026-10-01T07:04:56.8028908Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-01T07:04:56.8031457Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/three-white-lights/three-white-lights
+2026-10-01T07:04:56.8061447Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-01T07:04:56.8088422Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-01T07:04:56.8287584Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-01T07:04:56.8333733Z http.https://github.com/.extraheader
+2026-10-01T07:04:56.8335036Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-01T07:04:56.8371111Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-01T07:04:56.8568703Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-01T07:04:56.8600452Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-01T07:04:56.8909641Z Cleaning up orphan processes
+2026-10-01T07:04:56.9136108Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

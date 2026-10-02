@@ -1,0 +1,23 @@
+{
+  "recordedAt": "2026-10-01T07:06:32.928Z",
+  "sourceCommit": "e57d7ffe35a3b1041303ea482c20435f92af0797",
+  "archive": {
+    "id": 11145618613,
+    "runId": 36827797370,
+    "sha256": "0176e7bb9db6343c08d8403feebd73b81990d04700126f8d4a1d0ea69cda903b",
+    "sizeBytes": 13119263,
+    "conclusion": "success"
+  },
+  "browserJob": {
+    "id": 110257486067,
+    "runId": 36827797370,
+    "conclusion": "failure",
+    "failedStep": "Browser adapter unit tests",
+    "error": "[TSCONFIG_ERROR] Failed to load tsconfig 'expo/tsconfig.base': Tsconfig not found",
+    "log": ".gauntlet/evidence/production/ci-browser-e57d7ffe.txt"
+  },
+  "limitations": [
+    "The archive job's success does not establish the browser or domain job passed.",
+    "Earlier jobs that failed before their steps had no retrievable cause; no cause is inferred from their duration."
+  ]
+}

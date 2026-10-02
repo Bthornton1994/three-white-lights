@@ -1,0 +1,261 @@
+{
+  "capturedFrom": {
+    "capturedAt": "2026-09-15T19:38:17.291Z",
+    "url": "http://127.0.0.1:8081",
+    "sourceRoot": "/workspace",
+    "commit": "52c7aa65",
+    "branch": "cursor/session-a-iron-amber-quality-1c66",
+    "workingTree": "clean",
+    "dirtyPaths": [
+      "M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/meet/sound.json"
+    ],
+    "instrument": {
+      "capture-cutin.mjs": "6b735d315332a467",
+      "png.mjs": "6356a0d0b0dcb696"
+    }
+  },
+  "frames": [
+    {
+      "moment": "third-attempt-walkout",
+      "file": "/workspace/.gauntlet/shots/cutin/third-attempt-walkout.png",
+      "name": "third-attempt-walkout.png",
+      "expectedLine": "LAST ONE",
+      "seen": {
+        "present": true,
+        "line": "LAST ONE",
+        "hint": "TAP TO SKIP",
+        "scrim": true,
+        "art": {
+          "x": 38,
+          "y": 261.5,
+          "w": 314,
+          "h": 210
+        },
+        "lineBox": {
+          "x": 134.03125,
+          "y": 521.5,
+          "w": 121.921875,
+          "h": 30
+        },
+        "hintBox": {
+          "x": 152.765625,
+          "y": 567.5,
+          "w": 84.46875,
+          "h": 15
+        },
+        "behind": true,
+        "corners": {
+          "topLeft": true,
+          "topRight": true,
+          "bottomLeft": true,
+          "bottomRight": true,
+          "centre": true
+        },
+        "tappableThroughTheCutIn": {
+          "checkIn": false,
+          "shellNav": null
+        }
+      },
+      "scrim": {
+        "blended": 977063,
+        "opaqueBackdrop": 492,
+        "untouched": 55615
+      },
+      "pixelHash": 3366652868
+    },
+    {
+      "moment": "personal-record",
+      "file": "/workspace/.gauntlet/shots/cutin/personal-record.png",
+      "name": "personal-record.png",
+      "expectedLine": "NOBODY HAS SEEN YOU DO THIS",
+      "seen": {
+        "present": true,
+        "line": "NOBODY HAS SEEN YOU DO THIS",
+        "hint": "TAP TO SKIP",
+        "scrim": true,
+        "art": {
+          "x": 38,
+          "y": 246.5,
+          "w": 314,
+          "h": 210
+        },
+        "lineBox": {
+          "x": 39,
+          "y": 506.5,
+          "w": 312,
+          "h": 60
+        },
+        "hintBox": {
+          "x": 152.765625,
+          "y": 582.5,
+          "w": 84.46875,
+          "h": 15
+        },
+        "behind": true,
+        "corners": {
+          "topLeft": true,
+          "topRight": true,
+          "bottomLeft": true,
+          "bottomRight": true,
+          "centre": true
+        },
+        "tappableThroughTheCutIn": {
+          "checkIn": false,
+          "shellNav": null
+        }
+      },
+      "scrim": {
+        "blended": 930380,
+        "opaqueBackdrop": 461,
+        "untouched": 42089
+      },
+      "pixelHash": 2851466275
+    },
+    {
+      "moment": "bomb-out",
+      "file": "/workspace/.gauntlet/shots/cutin/bomb-out.png",
+      "name": "bomb-out.png",
+      "expectedLine": "THAT IS THE MEET",
+      "seen": {
+        "present": true,
+        "line": "THAT IS THE MEET",
+        "hint": "TAP TO SKIP",
+        "scrim": true,
+        "art": {
+          "x": 38,
+          "y": 261.5,
+          "w": 314,
+          "h": 210
+        },
+        "lineBox": {
+          "x": 82.09375,
+          "y": 521.5,
+          "w": 225.8125,
+          "h": 30
+        },
+        "hintBox": {
+          "x": 152.765625,
+          "y": 567.5,
+          "w": 84.46875,
+          "h": 15
+        },
+        "behind": true,
+        "corners": {
+          "topLeft": true,
+          "topRight": true,
+          "bottomLeft": true,
+          "bottomRight": true,
+          "centre": true
+        },
+        "tappableThroughTheCutIn": {
+          "checkIn": false,
+          "shellNav": null
+        }
+      },
+      "scrim": {
+        "blended": 975046,
+        "opaqueBackdrop": 492,
+        "untouched": 45152
+      },
+      "pixelHash": 564490991
+    },
+    {
+      "moment": "coach-heavy-set",
+      "file": "/workspace/.gauntlet/shots/cutin/coach-heavy-set.png",
+      "name": "coach-heavy-set.png",
+      "expectedLine": "THAT MOVED",
+      "seen": {
+        "present": true,
+        "line": "THAT MOVED",
+        "hint": "TAP TO SKIP",
+        "scrim": true,
+        "art": {
+          "x": 38,
+          "y": 261.5,
+          "w": 314,
+          "h": 210
+        },
+        "lineBox": {
+          "x": 113.6875,
+          "y": 521.5,
+          "w": 162.609375,
+          "h": 30
+        },
+        "hintBox": {
+          "x": 152.765625,
+          "y": 567.5,
+          "w": 84.46875,
+          "h": 15
+        },
+        "behind": true,
+        "corners": {
+          "topLeft": true,
+          "topRight": true,
+          "bottomLeft": true,
+          "bottomRight": true,
+          "centre": true
+        },
+        "tappableThroughTheCutIn": {
+          "checkIn": false,
+          "shellNav": null
+        }
+      },
+      "scrim": {
+        "blended": 976233,
+        "opaqueBackdrop": 492,
+        "untouched": 51525
+      },
+      "pixelHash": 4112263455
+    }
+  ],
+  "artDiffs": [
+    {
+      "a": "third-attempt-walkout",
+      "b": "personal-record",
+      "differing": 262801,
+      "total": 263760,
+      "alignedToEachOwnBox": true
+    },
+    {
+      "a": "personal-record",
+      "b": "bomb-out",
+      "differing": 262854,
+      "total": 263760,
+      "alignedToEachOwnBox": true
+    },
+    {
+      "a": "bomb-out",
+      "b": "coach-heavy-set",
+      "differing": 262852,
+      "total": 263760,
+      "alignedToEachOwnBox": true
+    }
+  ],
+  "leavesOnItsOwn": {
+    "stillUpAt": 702,
+    "stillUp": true,
+    "goneAt": 876,
+    "behind": true
+  },
+  "tapDismissed": {
+    "tappedAt": 3,
+    "goneAt": 4,
+    "dismissTookMs": 1,
+    "exitAnimationYardstickMs": 100,
+    "wellInsideTheHold": true,
+    "holdReadFromSourceMs": 1720
+  },
+  "debugMeetPath": {
+    "scope": "DEBUG ARM. ?meet=<moment> resolves to { surface: \"meet\", source: \"debug\" } and frozenMeetFor branches on that source, so the meet, the attempt and the lifter are all scripted. The SCREENS and the GATE are the shipped ones with nothing arranged. A meet a player lifted for is checked by tools/verify-shell-route.mjs, not here.",
+    "onWalkout": null,
+    "onBombOut": "THAT IS THE MEET",
+    "addressBar": {
+      "walkout": "http://127.0.0.1:8081/?meet=walkout-third",
+      "bombed": "http://127.0.0.1:8081/?meet=bombed"
+    },
+    "urlFaults": []
+  },
+  "failures": [],
+  "pageErrors": []
+}

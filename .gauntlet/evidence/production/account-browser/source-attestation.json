@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-10-01T07:03:19.348943+00:00",
+  "reportSha256": "85dbba392a199342274993f32f89ad7caf615fbb9c91e43d6a99bdbb40562679",
+  "sourceHashesMatch": true,
+  "capturedSourceCount": 19,
+  "bundleInputCount": 56,
+  "bundleInputsMatch": true,
+  "bundleSha256": "6a3f64d04e4608efda8dbc860524ef0ecdbd2d8916f5e0b7109d4f87f40081a1",
+  "instrumentBlobs": {
+    "scripts/production-account-browser.mjs": "66910507a9d31382312899d874151add2adf6bf9",
+    "scripts/production-meet-browser.mjs": "29abc32491bf7e9edf694cf743c5ec376ec8428a",
+    "web/tests/production-http-fixture.mjs": "9afcfbc90b02c3ffaaab5710b0cdc7e8d5d18fa5"
+  },
+  "limitations": [
+    "Auth identities and tokens are explicit local fixtures, not live Supabase sessions.",
+    "Database/SQL, production handler, native replay and client/hooks are real; PGlite has one connection.",
+    "Automated browser input does not establish physical-device touch feel, native haptics, or human performance.",
+    "Missing art was recorded during this account-flow check. Functional acknowledgement does not satisfy the separate full-art release gate."
+  ],
+  "actualStatus": "account-flow-passed-art-incomplete"
+}

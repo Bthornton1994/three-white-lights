@@ -1,0 +1,328 @@
+{
+  "startedAt": "2026-09-30T21:24:15.669Z",
+  "checks": [
+    {
+      "name": "nine native attempts, successful total, correct result columns and PNG download",
+      "status": "passed",
+      "cells": [
+        "6",
+        "3",
+        "Mara Vellum",
+        "63.50",
+        "25",
+        "27.5",
+        "30",
+        "30",
+        "25",
+        "27.5",
+        "30",
+        "30",
+        "25",
+        "27.5",
+        "30",
+        "30",
+        "90",
+        "96.33"
+      ]
+    },
+    {
+      "name": "RPE selects before explicit Start; keyboard focus loss releases grip and freezes ticks",
+      "status": "passed"
+    }
+  ],
+  "attempts": [
+    {
+      "kind": "squat",
+      "ordinal": 1,
+      "outcome": "good-lift",
+      "resolvedTick": 115
+    },
+    {
+      "kind": "squat",
+      "ordinal": 2,
+      "outcome": "good-lift",
+      "resolvedTick": 106
+    },
+    {
+      "kind": "squat",
+      "ordinal": 3,
+      "outcome": "good-lift",
+      "resolvedTick": 112
+    },
+    {
+      "kind": "bench",
+      "ordinal": 1,
+      "outcome": "good-lift",
+      "resolvedTick": 186
+    },
+    {
+      "kind": "bench",
+      "ordinal": 2,
+      "outcome": "good-lift",
+      "resolvedTick": 212
+    },
+    {
+      "kind": "bench",
+      "ordinal": 3,
+      "outcome": "good-lift",
+      "resolvedTick": 171
+    },
+    {
+      "kind": "deadlift",
+      "ordinal": 1,
+      "outcome": "good-lift",
+      "resolvedTick": 137
+    },
+    {
+      "kind": "deadlift",
+      "ordinal": 2,
+      "outcome": "good-lift",
+      "resolvedTick": 176
+    },
+    {
+      "kind": "deadlift",
+      "ordinal": 3,
+      "outcome": "good-lift",
+      "resolvedTick": 140
+    }
+  ],
+  "errors": [],
+  "assetFailures": [
+    {
+      "path": "/empire-art/production-plates.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/squat-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/deadlift-atlas.png",
+      "status": 404
+    },
+    {
+      "path": "/empire-art/production-plates.png",
+      "status": 404
+    },
+    {
+      "path": "/athlete/bench-atlas.png",
+      "status": 404
+    }
+  ],
+  "limitations": [
+    "A disposable practice lifter is played through visible browser controls.",
+    "This check does not establish live-account persistence, physical-device touch feel or native haptics.",
+    "Original final art files could not be restored in this run. Functional checks used the explicit art-unavailable message; visual and full asset validation remain incomplete."
+  ],
+  "status": "functional-passed-art-incomplete",
+  "finishedAt": "2026-09-30T21:25:51.276Z",
+  "viteLog": "\n  VITE v8.2.1  ready in 115 ms\n\n  ➜  Local:   http://127.0.0.1:5178/\n"
+}

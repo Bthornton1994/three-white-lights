@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-01",
+  "scope": "Catalog fingerprints cover non-twl_ public relations/functions; Auth metadata fingerprint excludes only twl_access. No claim to hash every shared data row.",
+  "beforeMigration": {
+    "auth_users": 9,
+    "existing_public_relations_hash": "f1278e9940f2130f495c36b27b61f752",
+    "existing_public_functions_hash": "5bca307c9758143f36e088d1afd54790"
+  },
+  "afterMigrationAndFirstLiveProof": {
+    "auth_users": 9,
+    "profiles": 9,
+    "residual_test_users": 0,
+    "twl_accounts": 0,
+    "twl_receipts": 0,
+    "existing_public_relations_hash": "f1278e9940f2130f495c36b27b61f752",
+    "existing_public_functions_hash": "5bca307c9758143f36e088d1afd54790"
+  },
+  "beforeOwnerEnrollment": {
+    "shared_auth_metadata_hash": "5121591ef6624e702670cc2955553172"
+  },
+  "afterOwnerEnrollment": {
+    "shared_auth_metadata_hash": "5121591ef6624e702670cc2955553172",
+    "enrolled_accounts": 1,
+    "residual_test_users": 0
+  },
+  "finalCleanup": {
+    "auth_users": 9,
+    "profiles": 9,
+    "residual_test_users": 0,
+    "twl_accounts": 0,
+    "twl_receipts": 0,
+    "enrolled_accounts": 1,
+    "twl_tables": [
+      {
+        "rls": true,
+        "table": "twl_accounts",
+        "anon_select": false,
+        "auth_select": false,
+        "service_select": true
+      },
+      {
+        "rls": true,
+        "table": "twl_request_receipts",
+        "anon_select": false,
+        "auth_select": false,
+        "service_select": true
+      }
+    ],
+    "twl_functions": [
+      {
+        "config": [
+          "search_path=\"\""
+        ],
+        "function": "twl_commit_account",
+        "anon_execute": false,
+        "auth_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "config": [
+          "search_path=\"\""
+        ],
+        "function": "twl_initialize_account",
+        "anon_execute": false,
+        "auth_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "config": [
+          "search_path=\"\""
+        ],
+        "function": "twl_read_account",
+        "anon_execute": false,
+        "auth_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      }
+    ]
+  }
+}

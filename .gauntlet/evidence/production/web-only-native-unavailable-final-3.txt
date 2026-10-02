@@ -1,0 +1,14 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> three-white-lights-web@1.0.0 test:unit:web
+> vitest run --config vitest.config.ts
+
+
+ RUN  v4.1.11 /tmp/twl-browser-only-20261001-v831
+
+
+ Test Files  5 passed (5)
+      Tests  70 passed (70)
+   Start at  00:29:35
+   Duration  2.67s (transform 2.03s, setup 0ms, import 2.84s, tests 2.32s, environment 1ms)
+

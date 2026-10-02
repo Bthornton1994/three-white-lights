@@ -1,0 +1,2442 @@
+/**
+ * cutInWiring.test.ts — that the gate is actually WIRED, and that no screen can
+ * route around it.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY A SOURCE SCAN
+ * ---------------------------------------------------------------------------
+ * This project has no DOM test runner: `vitest.config.ts` is `environment:
+ * node` and the suite is `src/**\/*.test.ts`, so a `.tsx` cannot be rendered
+ * here at all. `sessionWiring.test.ts` established the idiom for exactly this
+ * problem and this file follows it — read the real sources and fail on the
+ * shapes that would break the rule.
+ *
+ * IT IS WEAKER THAN RENDERING AND THIS FILE DOES NOT PRETEND OTHERWISE. What a
+ * scan can prove is that the call is present and the handler is the right one.
+ * What it cannot prove is that a tap on a phone reaches it, or that the
+ * interrupt feels like an interrupt. GDD §12.1 is explicit that the second of
+ * those was never automatable.
+ *
+ * EVERY SCAN BELOW IS PAIRED WITH A POSITIVE CONTROL, because a scan that has
+ * stopped matching passes every file.
+ */
+
+import { execFileSync } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+import { budgetFrom } from '../../tools/testBudget.mjs';
+import ts from 'typescript';
+
+import { onlyComments, withoutComments } from '../tuning/audit';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const SRC = path.resolve(HERE, '..');
+const REPO_ROOT = path.resolve(SRC, '..');
+
+function source(relPath: string): string {
+  return readFileSync(path.join(SRC, relPath), 'utf8');
+}
+
+/** Comments blanked, string contents kept — a testID and a JSX prop are code. */
+function code(relPath: string): string {
+  return withoutComments(source(relPath));
+}
+
+/**
+ * The other half of the same file: its COMMENTS, as one flat run of prose.
+ *
+ * `onlyComments` is `withoutComments`'s complement and `audit.test.ts` checks
+ * that they partition the file. Decoration — the leading `*` of a jsdoc line,
+ * the `//` of a line comment, the fences — is stripped and runs of whitespace
+ * are collapsed, so a claim that wraps across four lines is one string to match
+ * against rather than four.
+ */
+function proseOfText(text: string): string {
+  return onlyComments(text)
+    .replace(/^\s*(?:\/\*+|\*+\/|[*/]+)/gm, ' ')
+    .replace(/\*+\/|\/\*+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function prose(relPath: string): string {
+  return proseOfText(source(relPath));
+}
+
+/** The same, for a REPOSITORY-relative path — `App.tsx`, `tools/…`, `src/…`. */
+function proseOf(repoRel: string): string {
+  return proseOfText(readFileSync(path.join(REPO_ROOT, repoRel), 'utf8'));
+}
+
+const VIEW = code('cutin/CutInView.tsx');
+const HOST = code('cutin/CutInHost.tsx');
+
+/**
+ * How many times a pattern matches — the number, not "at least one".
+ *
+ * WHY EVERY SOURCE PIN BELOW GOES THROUGH THIS. `expect(HOST).toMatch(/x/)` is
+ * satisfied by ONE witness, and `CutInHost.tsx` has more than one of most of the
+ * things this file pins. Three regexes over this module used to hold the §7.2
+ * cap — one of them byte-exact including the argument object — and the mutation
+ * that deletes the call they were written about left all three green, because
+ * the same call appears a second time twenty lines below at a site the mutation
+ * does not touch. A byte-exact regex FEELS stronger than a loose one and is not,
+ * when the byte-exact text is duplicated. The tell was that the match count was
+ * never asserted, which is the fix this file already demands of its sweeps.
+ *
+ * A fresh `RegExp` per call, because `lastIndex` on a shared global pattern
+ * makes the answer depend on who asked first.
+ */
+function occurrences(text: string, pattern: RegExp): number {
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  return (text.match(new RegExp(pattern.source, flags)) ?? []).length;
+}
+
+/**
+ * HOW MANY TIMES EACH LOAD-BEARING CALL APPEARS IN `CutInHost.tsx` — one table,
+ * so a pin cannot be weakened by editing the assertion that reads it.
+ *
+ * Read off the COMMENT-STRIPPED source (`code()`), so naming one of these in
+ * prose does not count. That is deliberate: the claim is about what the module
+ * DOES, and a comment that mentions `resumeCutInSession` was one of the four
+ * witnesses that made the old loose pin unfalsifiable.
+ *
+ * Each `_TOTAL` counts the import line as well as the calls, because the import
+ * is a real occurrence and pretending otherwise would mean a second pattern to
+ * keep in step. The per-site rows underneath are what say WHERE they are, and
+ * every one of them is pinned at exactly 1 — a site that gained a duplicate
+ * would be a site a mutation could delete for free, which is the whole finding.
+ *
+ * A number here moving is a diff somebody writes on purpose. That is the point:
+ * §12.3's refusal condition is that a sitting gets one cut-in, and a fourth
+ * write to the ledger or a third resume arriving quietly is exactly how that
+ * stops being true.
+ */
+const HOST_SITES = {
+  /** `import { … resumeCutInSession }`, the `useRef` initialiser, the effect. */
+  RESUME_TOTAL: 3,
+  /** The `useRef` initialiser — the mount that must NOT spend a second slot. */
+  RESUME_AT_THE_REF: 1,
+  /** The effect body — the re-open a NEW sitting id is allowed. */
+  RESUME_IN_THE_EFFECT: 1,
+  /** The id guard above that re-open. Deleting it hands a mount a second slot. */
+  SESSION_ID_GUARD: 1,
+  /** `import { requestCutIn … }` and the one call inside `offer`. */
+  REQUEST_TOTAL: 2,
+  /** The single call: every beat this app offers goes through this line. */
+  REQUEST_AT_THE_OFFER: 1,
+  /** The import, plus `decision.state`, `session.current` and `next`. */
+  REMEMBER_TOTAL: 4,
+  /** Written back on EVERY decision, which is what makes a refusal stick. */
+  REMEMBER_AFTER_A_DECISION: 1,
+  /** ...and on the auto-dismiss route. */
+  REMEMBER_AFTER_A_DISMISS: 1,
+  /** ...and on the tap route, which answers to a different constant. */
+  REMEMBER_AFTER_A_TAP: 1,
+  /** One import of the ledger. Two would be two modules' worth of state. */
+  LEDGER_IMPORT: 1,
+  /** The one observe call, which an `indexOf` ordering check depends on. */
+  OBSERVE_AT_THE_OFFER: 1,
+  /** ...and the branch it has to sit above. */
+  FIRE_BRANCH: 1,
+} as const;
+
+/**
+ * THE FOUR FIRING MOMENTS OF GDD §7.2, AND THE SCREEN THAT REPORTS EACH.
+ *
+ * Spelled out here rather than derived, so deleting a `useOfferCutIn` call from
+ * any one of these screens turns this file red by name. A gate with no callers
+ * is the same failure as an empty firing-moment list, one layer out.
+ *
+ * IT IS NOT THE SCOPE OF THE SCANS BELOW, and that distinction is the whole
+ * point of `THE SET OF FILES THAT TALK TO THE GATE IS THIS SET` further down.
+ * Every scan in this file used to read only these five paths, so a SIXTH screen
+ * — one offering two beat kinds at once, or one opening its own gate session —
+ * was invisible to all of them and the run's ruled claims about the priority
+ * order and the cap would have gone quietly false. The list is now checked to
+ * be exhaustive by walking `src/`, which is the difference between a statement
+ * and a restatement.
+ */
+const CALLERS: readonly (readonly [string, string, string])[] = [
+  ['third-attempt walk-out', 'meet/WalkoutView.tsx', "kind: 'meet-walkout'"],
+  ['a PR at a meet', 'meet/RecapView.tsx', "kind: 'record'"],
+  ['a PR in the daily loop', 'session/CloseOutView.tsx', "kind: 'record'"],
+  ['bombing out', 'meet/BombOutView.tsx', "kind: 'meet-over'"],
+  ['a coach reaction on a heavy set', 'session/RestView.tsx', "kind: 'work-set'"],
+];
+
+/**
+ * The two screens that own a sitting and mount the host over it.
+ *
+ * `src/`-relative, like `CALLERS`. The sitting derivation further down works in
+ * REPOSITORY-relative paths — its file list is the compiler's, which reaches
+ * outside `src/` — and prefixes these rather than keeping a second list.
+ */
+const HOST_SCREENS: readonly string[] = ['meet/MeetScreen.tsx', 'session/SessionScreen.tsx'];
+
+/**
+ * WHAT EACH CALL SITE ACTUALLY HANDS THE GATE, scoped to the argument of
+ * `useOfferCutIn` rather than swept off the whole file.
+ *
+ * THE SCOPING IS THE POINT. `WalkoutView.tsx` and `BombOutView.tsx` also call
+ * `playBeat({ kind: 'walkout-call' })` and `playBeat({ kind: 'bomb-out' })` —
+ * the SOUND scheduler, an unrelated union that happens to spell its
+ * discriminant the same way. A file-wide `/kind: '…'/` therefore returns a set
+ * that can never be pinned, which is why the check that used it could only ask
+ * "is this one present" and never "is this all of them".
+ *
+ * Braces are walked rather than matched with a regex: a beat is an object
+ * literal with nested objects and expressions in it, and the closing paren of
+ * `useOfferCutIn(` is not the first `)` after it.
+ */
+function offeredBeatArgumentsIn(text: string): readonly string[] {
+  const out: string[] = [];
+  const CALL = 'useOfferCutIn(';
+  for (let at = text.indexOf(CALL); at >= 0; at = text.indexOf(CALL, at + 1)) {
+    let depth = 0;
+    for (let i = at + CALL.length - 1; i < text.length; i += 1) {
+      if (text[i] === '(') depth += 1;
+      else if (text[i] === ')') {
+        depth -= 1;
+        if (depth === 0) {
+          out.push(text.slice(at + CALL.length, i));
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** Every beat kind and record sub-kind the five call sites offer, de-duplicated. */
+function beatKindsOffered(): {
+  readonly kinds: readonly string[];
+  readonly recordKinds: readonly string[];
+  readonly perFile: readonly (readonly [string, readonly string[]])[];
+} {
+  const perFile = CALLERS.map(([, file]) => {
+    const args = offeredBeatArgumentsIn(code(file));
+    return [file, args] as const;
+  }).filter(([, args]) => args.length > 0);
+  const all = perFile.flatMap(([, args]) => args).join('\n');
+  const uniq = (pattern: RegExp): readonly string[] =>
+    [...new Set([...all.matchAll(pattern)].map((m) => m[1] ?? ''))].sort();
+  return {
+    kinds: uniq(/kind: '([a-z-]+)'/g),
+    recordKinds: uniq(/record: '([a-z0-9]+)'/g),
+    perFile,
+  };
+}
+
+/**
+ * Every non-test source file under `src/`, as a path relative to `src/`.
+ *
+ * `src/`-SCOPED ON PURPOSE, and its callers are the ones whose subject really is
+ * the application's own modules — the gate's callers and the text cross-check on
+ * them. The PROSE scan is not one of them any more: see `everyProseFile`.
+ */
+function everySourceFile(dir: string = ''): readonly string[] {
+  return readdirSync(path.join(SRC, dir), { withFileTypes: true }).flatMap((entry) => {
+    const rel = dir === '' ? entry.name : `${dir}/${entry.name}`;
+    if (entry.isDirectory()) return everySourceFile(rel);
+    if (!/\.tsx?$/.test(entry.name)) return [];
+    if (/\.test\.tsx?$/.test(entry.name)) return [];
+    return [rel];
+  });
+}
+
+/** Repo-relative paths git actually tracks under `dir`. */
+function trackedUnder(dir: string): readonly string[] {
+  const out = execFileSync('git', ['ls-files', '-z', '--', dir], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  });
+  return out.split('\0').filter((line) => line !== '');
+}
+
+/**
+ * THE WHOLE TREE, for the prose ban — repository-relative, ASKED OF GIT.
+ *
+ * IT USED TO BE A WALK OF `src/` FOR `.ts(x)`, under a test named "NO FILE IN
+ * THE TREE…", and that was two different sets wearing one name. `App.tsx` sits
+ * at the repository root and every file in `tools/` is a `.mjs`, so neither was
+ * ever read — while `theProject()`, 200 lines up, gives the reason a scan rooted
+ * at `src/` cannot see `App.tsx` as its own justification for taking the
+ * compiler's root set instead. The argument was made and then not applied here.
+ *
+ * GIT RATHER THAN A WALK, for the reason `THE PIXELS ARE TRACKED` gives one
+ * screen down: the index is the only instrument that answers a question about a
+ * FRESH CHECKOUT, and it also picks up a directory nobody remembered to add.
+ * `tools/` is not incidental scope — `tools/capture-cutin.mjs` describes this
+ * overlay at length and is the file the ceiling measurement trips on first.
+ *
+ * TESTS ARE IN. A comment in a test file describes the architecture to the next
+ * reader exactly as loudly as one in a module, and `cutInArt.test.ts` is where
+ * most of this piece's history is written down.
+ */
+function everyProseFile(): readonly string[] {
+  return trackedUnder('.')
+    .filter((rel) => /\.(?:ts|tsx|mjs|cjs|js|jsx)$/.test(rel))
+    .filter((rel) => existsSync(path.join(REPO_ROOT, rel)))
+    .sort();
+}
+
+/**
+ * The piece's own module. Excluded from the walks below BY PREFIX rather than
+ * by name, so a file added to `src/cutin/` cannot escape the exclusion and a
+ * file added anywhere else cannot fall into it.
+ *
+ * THE RESIDUAL THAT LEAVES, STATED RATHER THAN DISCOVERED: a NEW file inside
+ * `src/cutin/` could open a session and no check here would see it. That is
+ * left standing on purpose and is the softest of the holes — it has to be
+ * written inside the module whose entire purpose is the cap, next to the
+ * comments explaining it, and `resumeCutInSession` makes a re-open under an
+ * existing id idempotent, so the damage needs a NEW id as well as a new file.
+ *
+ * WHAT IT NO LONGER LEAVES, and what this comment used to describe only half of:
+ * the exclusion also hid a RE-EXPORT. One line inside this directory —
+ *
+ *     export { useOfferCutIn as offerBeat } from './CutInHost';
+ *
+ * — launders the name, and a sixth screen calling `offerBeat` spells none of the
+ * words a text scan is looking for. Proved by execution before it was closed: a
+ * `SixthView.tsx` offering TWO beat kinds through that alias type-checked clean
+ * and left all 2470 tests green, with GDD §7.2's ruled "the priority order
+ * decides nothing today" false and nothing red. The previous round's argument —
+ * that an aliased import still spells the original name somewhere — is true of a
+ * DIRECT import and of a re-export OUTSIDE this directory, and false of one
+ * inside it, because the file holding the original spelling is the excluded one.
+ * So the caller set is now the type checker's, exactly like `SITTING_BINDINGS`,
+ * and the text scan below survives only as a cross-check.
+ */
+const THE_GATE_ITSELF = 'cutin/';
+
+/**
+ * NAMING ANY OF THESE IS TALKING TO THE GATE — the TEXT half, kept as a
+ * cross-check on the symbol scan rather than as the answer.
+ *
+ * `useOfferCutIn` is how a screen reports a beat; the others are the gate and
+ * the ledger themselves, which no screen may reach — a screen that opened its
+ * own session would mint itself a second slot and §12.3's refusal condition
+ * would become a convention.
+ */
+const GATE_ENTRY_POINTS =
+  /\b(?:useCutIn|useOfferCutIn|openCutInSession|resumeCutInSession|requestCutIn|rememberCutInSession|forgetAllCutInSessions|observeCutInDecision|forgetCutInObservations)\b/;
+
+/** Files outside `src/cutin/` whose code matches `pattern`. */
+function filesNaming(pattern: RegExp): readonly string[] {
+  return everySourceFile()
+    .filter((rel) => !rel.startsWith(THE_GATE_ITSELF))
+    .filter((rel) => pattern.test(code(rel)))
+    .sort();
+}
+
+/**
+ * THE BINDINGS THAT ARE THE GATE, by module and exported name.
+ *
+ * The same list `GATE_ENTRY_POINTS` spells, asked of the compiler instead — and
+ * one name longer. `useCutIn` was in neither list before this round, and a
+ * screen writing `const { offer } = useCutIn(); offer(beats)` reaches the gate
+ * without naming anything either scan was looking for. It is a hook this module
+ * exports for exactly that purpose, so it belongs here.
+ */
+const GATE_BINDINGS: readonly (readonly [string, readonly string[]])[] = [
+  ['src/cutin/CutInHost.tsx', ['useOfferCutIn', 'useCutIn']],
+  ['src/cutin/cutInGate.ts', ['openCutInSession', 'requestCutIn']],
+  [
+    'src/cutin/cutInLedger.ts',
+    ['resumeCutInSession', 'rememberCutInSession', 'forgetAllCutInSessions'],
+  ],
+  // THE SIBLING, ADDED WITH THE MODULE RATHER THAN A ROUND LATER. The ledger row
+  // above bans a screen from clearing the COUNT; this one bans it from clearing
+  // the RECORD OF WHAT THE GATE ANSWERED. A screen that could erase an
+  // observation could erase the evidence that it was refused, which is the same
+  // hole one level out from the one the ledger row closes.
+  ['src/cutin/cutInObserver.ts', ['observeCutInDecision', 'forgetCutInObservations']],
+];
+
+/** The one binding whose LOCAL SPELLINGS the priority-order loop has to read. */
+const THE_OFFER_HOOK: readonly [string, string] = ['src/cutin/CutInHost.tsx', 'useOfferCutIn'];
+
+// ---------------------------------------------------------------------------
+// WHO CLAIMS A SITTING — asked of the type checker, not of a JSX spelling
+// ---------------------------------------------------------------------------
+
+/**
+ * THE THREE BINDINGS THAT CLAIM A SITTING, by module and exported name.
+ *
+ * A SITTING IS WHAT THE CAP COUNTS (GDD §7.2), so the set of files that can open
+ * one is the set §12.3's refusal condition actually rests on. It used to be
+ * derived from the text `<CutInHost`, and that is a JSX SPELLING rather than a
+ * binding: a screen doing
+ *
+ *     import { CutInHost as Interrupt } from '../cutin/CutInHost';
+ *     <Interrupt sessionId="meet-7" seed={3} />
+ *
+ * matched neither `<CutInHost\b` nor `cutInSessionId|cutInSessionSeed` — it
+ * passes a literal id — and so opened a SECOND gate session under a SECOND id
+ * inside one sitting, handing the player a second cut-in with nothing red.
+ * `AppShell.tsx` is the plausible author of that edit: it is the one file in the
+ * tree that talks about hosts without mounting one.
+ *
+ * SO THE SET IS ASKED OF THE COMPILER. Every identifier in the project is
+ * resolved with `checker.getSymbolAtLocation`, aliases followed with
+ * `getAliasedSymbol`, and compared against the symbols these three exports
+ * declare. An alias, a namespace import, a re-export chain and a dynamic
+ * `import()` all resolve to the same symbol, so "what counts as a reference" is
+ * not a question this file answers — which is the same move `progression.test.ts`
+ * makes for the route table, and for the same reason: it hand-rolled that answer
+ * once and the hand-rolled version was the defect.
+ *
+ * IT IS COARSER THAN THE OLD PATTERN ON PURPOSE. Referencing `CutInHost` AT ALL
+ * puts a file in this set, including a type-only import. That errs toward red,
+ * and red on a file that turns out to be innocent is a line added to
+ * `HOST_SCREENS` on purpose — which is the direction a refusal condition should
+ * fail in.
+ */
+const SITTING_BINDINGS: readonly (readonly [string, readonly string[]])[] = [
+  ['src/cutin/CutInHost.tsx', ['CutInHost']],
+  ['src/cutin/cutInGate.ts', ['cutInSessionId', 'cutInSessionSeed']],
+];
+
+/** Repo-relative posix path, or `null` for anything outside the repository. */
+function repoPathOf(fileName: string): string | null {
+  const rel = path.relative(REPO_ROOT, fileName).split(path.sep).join('/');
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  if (/(?:^|\/)node_modules\//.test(rel)) return null;
+  return rel;
+}
+
+/** The declared symbols of `names`, as `file` exports them. */
+function exportedSymbols(
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  file: string,
+  names: readonly string[],
+): readonly ts.Symbol[] {
+  const source = program.getSourceFile(path.join(REPO_ROOT, file));
+  if (source === undefined) throw new Error(`${file} is not in the program`);
+  const moduleSymbol = checker.getSymbolAtLocation(source);
+  if (moduleSymbol === undefined) throw new Error(`${file} is not a module`);
+  const exported = checker.getExportsOfModule(moduleSymbol);
+  return names.map((name) => {
+    const found = exported.find((symbol) => symbol.name === name);
+    if (found === undefined) throw new Error(`${file} no longer exports ${name}`);
+    return found;
+  });
+}
+
+interface SymbolScan {
+  readonly scanned: readonly string[];
+  readonly referencing: readonly string[];
+  /**
+   * Per file, the LOCAL SPELLINGS that resolved into `wanted`.
+   *
+   * `import { useOfferCutIn as offerBeat }` puts both names here, and a caller
+   * reading call sites has to look for both — which is the difference between
+   * finding a laundered call and reporting the file as offering no beat at all.
+   */
+  readonly localNames: ReadonlyMap<string, readonly string[]>;
+}
+
+/** Every file in `program` holding an identifier that resolves into `wanted`. */
+function filesReferencing(
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  wanted: ReadonlySet<ts.Symbol>,
+): SymbolScan {
+  const scanned: string[] = [];
+  const referencing: string[] = [];
+  const localNames = new Map<string, readonly string[]>();
+  for (const source of program.getSourceFiles()) {
+    if (source.isDeclarationFile) continue;
+    const rel = repoPathOf(source.fileName);
+    if (rel === null) continue;
+    scanned.push(rel);
+    const spellings = new Set<string>();
+    const visit = (node: ts.Node): void => {
+      if (ts.isIdentifier(node)) {
+        const symbol = checker.getSymbolAtLocation(node);
+        const resolved =
+          symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+            ? checker.getAliasedSymbol(symbol)
+            : symbol;
+        if (resolved !== undefined && wanted.has(resolved)) spellings.add(node.text);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    if (spellings.size > 0) {
+      referencing.push(rel);
+      localNames.set(rel, [...spellings].sort());
+    }
+  }
+  return { scanned: scanned.sort(), referencing: referencing.sort(), localNames };
+}
+
+/**
+ * The project, compiled once and shared by both symbol scans.
+ *
+ * MEMOISED RATHER THAN RUN AT IMPORT, the same call `progression.test.ts` makes:
+ * building a `ts.Program` over the whole project is a few seconds of real work,
+ * and an import that takes seconds has neither a timeout nor a useful failure
+ * message. Inside a test it has both.
+ *
+ * THE ROOT SET IS `tsconfig.json`'s OWN, not a walk of `src/`. §12.2 records why
+ * — a scan rooted at `src/` cannot see `App.tsx`, which sits at the repository
+ * root, mounts the shell, and could mount a host. The non-vacuity check below
+ * names it by hand.
+ */
+let programMemo: { readonly program: ts.Program; readonly checker: ts.TypeChecker } | null = null;
+function theProject(): { readonly program: ts.Program; readonly checker: ts.TypeChecker } {
+  if (programMemo !== null) return programMemo;
+  const configPath = path.join(REPO_ROOT, 'tsconfig.json');
+  const config: unknown = ts.readConfigFile(configPath, ts.sys.readFile).config;
+  const parsed = ts.parseJsonConfigFileContent(config, ts.sys, REPO_ROOT);
+  if (parsed.fileNames.length === 0) {
+    throw new Error('tsconfig.json resolved to no files — the derived pins would pass vacuously');
+  }
+  const program = ts.createProgram([...parsed.fileNames], {
+    ...parsed.options,
+    noEmit: true,
+    skipLibCheck: true,
+  });
+  programMemo = { program, checker: program.getTypeChecker() };
+  return programMemo;
+}
+
+function scanFor(bindings: readonly (readonly [string, readonly string[]])[]): SymbolScan {
+  const { program, checker } = theProject();
+  const wanted = new Set(
+    bindings.flatMap(([file, names]) => exportedSymbols(program, checker, file, names)),
+  );
+  return filesReferencing(program, checker, wanted);
+}
+
+let sittingScanMemo: SymbolScan | null = null;
+function sittingScan(): SymbolScan {
+  if (sittingScanMemo === null) sittingScanMemo = scanFor(SITTING_BINDINGS);
+  return sittingScanMemo;
+}
+
+let gateScanMemo: SymbolScan | null = null;
+function gateScan(): SymbolScan {
+  if (gateScanMemo === null) gateScanMemo = scanFor(GATE_BINDINGS);
+  return gateScanMemo;
+}
+
+let offerScanMemo: SymbolScan | null = null;
+function offerScan(): SymbolScan {
+  if (offerScanMemo === null) offerScanMemo = scanFor([[THE_OFFER_HOOK[0], [THE_OFFER_HOOK[1]]]]);
+  return offerScanMemo;
+}
+
+/**
+ * A TEST FILE, by the same regular expression `everySourceFile` uses.
+ *
+ * The two scans have to agree about what they drop or the comparison between
+ * them is between different sets. It is a regex's opinion, which §12.2 has ruled
+ * on elsewhere for the sweeps that hold refusal conditions; here it only decides
+ * which files may name the gate freely, and `src/cutin/`'s own tests — the ones
+ * that really do call `openCutInSession` — are already dropped by prefix.
+ */
+function isTestFile(rel: string): boolean {
+  return /\.test\.tsx?$/.test(rel);
+}
+
+/** Repo-relative, outside `src/cutin/`, non-test files in a symbol scan. */
+function outsideTheGate(scan: SymbolScan): readonly string[] {
+  return scan.referencing
+    .filter((rel) => !rel.startsWith(`src/${THE_GATE_ITSELF}`))
+    .filter((rel) => !isTestFile(rel));
+}
+
+/** Repo-relative files outside `src/cutin/` that claim a sitting. */
+function filesClaimingASitting(): readonly string[] {
+  return sittingScan().referencing.filter((rel) => !rel.startsWith(`src/${THE_GATE_ITSELF}`));
+}
+
+/** Repo-relative files outside `src/cutin/` that reach a gate entry point. */
+function filesTalkingToTheGate(): readonly string[] {
+  return outsideTheGate(gateScan());
+}
+
+// ---------------------------------------------------------------------------
+// The scans can see what they are looking for
+// ---------------------------------------------------------------------------
+
+describe('the scans are not blind', () => {
+  it('strips comments and keeps code', () => {
+    expect(withoutComments('// onPress={onDismiss}\n')).not.toMatch(/onDismiss/);
+    expect(withoutComments('<X onPress={onDismiss} />')).toMatch(/onDismiss/);
+  });
+
+  it('reads the real files', () => {
+    expect(VIEW.length).toBeGreaterThan(500);
+    expect(HOST.length).toBeGreaterThan(500);
+    for (const [, file] of CALLERS) {
+      expect(source(file).length, file).toBeGreaterThan(500);
+    }
+  });
+
+  it('THE WALK REACHES EVERY MODULE UNDER `src/`, and the patterns match a real caller', () => {
+    // Three positive controls for the derivation below, because a walk that
+    // returned nothing and a pattern that matched nothing would agree with a
+    // hand-written list right up until the day they were needed.
+    //
+    // `src/` IS THE RIGHT SCOPE FOR THIS ONE and the test is named for it now:
+    // its subject is which application module talks to the gate. The scan whose
+    // subject really is the whole repository takes `everyProseFile`, which is
+    // git's answer rather than a walk.
+    const all = everySourceFile();
+    expect(all.length, 'the walk found almost nothing').toBeGreaterThan(50);
+    // It descends into directories rather than reading only the top level...
+    expect(all).toContain('cutin/CutInHost.tsx');
+    expect(all).toContain('meet/WalkoutView.tsx');
+    // ...it skips tests, which are full of these names by design...
+    expect(all.filter((f) => f.includes('.test.'))).toEqual([]);
+    // ...and both patterns really do match the files that really do call the
+    // gate. If either stopped matching, `filesNaming` would return `[]` and the
+    // equality below would fail loudly rather than pass silently — but only the
+    // FIRST of those is guaranteed by the equality itself, so both are asserted.
+    expect(GATE_ENTRY_POINTS.test(code('cutin/CutInHost.tsx'))).toBe(true);
+    expect(GATE_ENTRY_POINTS.test(code('meet/WalkoutView.tsx'))).toBe(true);
+    // The exclusion is a prefix on the walk's own output, not a missing file.
+    expect(filesNaming(GATE_ENTRY_POINTS)).not.toContain('cutin/CutInHost.tsx');
+  });
+
+  it('AN ALIASED IMPORT IS STILL A REFERENCE — the sitting scan’s positive control', () => {
+    // The mutation this whole derivation exists for, run against a THREE-FILE
+    // PROGRAM BUILT IN MEMORY so the control is permanent rather than a thing a
+    // builder once did by hand and reverted. If `getAliasedSymbol` stopped being
+    // followed, the equality below would report the two host screens and look
+    // exactly like a pass while a third screen mounted its own host.
+    const files: Readonly<Record<string, string>> = {
+      '/v/host.tsx': 'export function CutInHost(p: { sessionId: string; seed: number }): unknown { return p; }\n',
+      '/v/aliased.tsx':
+        "import { CutInHost as Interrupt } from './host';\n" +
+        'export const a = <Interrupt sessionId="meet-7" seed={3} />;\n',
+      '/v/namespaced.tsx':
+        "import * as Gate from './host';\n" +
+        'export const b = <Gate.CutInHost sessionId="meet-7" seed={3} />;\n',
+      '/v/innocent.tsx': 'export const c = 2;\n',
+    };
+    const host: ts.CompilerHost = {
+      fileExists: (name) => name in files,
+      readFile: (name) => files[name],
+      getSourceFile: (name, languageVersion) => {
+        const text = files[name];
+        return text === undefined ? undefined : ts.createSourceFile(name, text, languageVersion, true);
+      },
+      getDefaultLibFileName: () => '/v/lib.d.ts',
+      writeFile: () => undefined,
+      getCurrentDirectory: () => '/v',
+      getCanonicalFileName: (name) => name,
+      useCaseSensitiveFileNames: () => true,
+      getNewLine: () => '\n',
+    };
+    const program = ts.createProgram(
+      Object.keys(files),
+      { noLib: true, noEmit: true, jsx: ts.JsxEmit.Preserve },
+      host,
+    );
+    const checker = program.getTypeChecker();
+    const declaring = program.getSourceFile('/v/host.tsx');
+    expect(declaring, 'the virtual program did not build').toBeDefined();
+    if (declaring === undefined) return;
+    const moduleSymbol = checker.getSymbolAtLocation(declaring);
+    expect(moduleSymbol).toBeDefined();
+    if (moduleSymbol === undefined) return;
+    const target = checker.getExportsOfModule(moduleSymbol).find((s) => s.name === 'CutInHost');
+    expect(target).toBeDefined();
+    if (target === undefined) return;
+
+    const seen: string[] = [];
+    for (const sourceFile of program.getSourceFiles()) {
+      let found = false;
+      const visit = (node: ts.Node): void => {
+        if (found) return;
+        if (ts.isIdentifier(node)) {
+          const symbol = checker.getSymbolAtLocation(node);
+          const resolved =
+            symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+              ? checker.getAliasedSymbol(symbol)
+              : symbol;
+          if (resolved === target) found = true;
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sourceFile);
+      if (found) seen.push(sourceFile.fileName);
+    }
+    // The aliased JSX tag and the namespaced one both count; the file that
+    // imports nothing does not. A text scan for `<CutInHost` sees none of the
+    // first two.
+    expect(seen.sort()).toEqual(['/v/aliased.tsx', '/v/host.tsx', '/v/namespaced.tsx']);
+    expect(seen).not.toContain('/v/innocent.tsx');
+    expect(files['/v/aliased.tsx'], 'the fixture stopped being the aliased shape').not.toMatch(
+      /<CutInHost\b/,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE PROSE HAS TO DESCRIBE THE ARCHITECTURE THAT IS THERE — GDD §7.2
+// ---------------------------------------------------------------------------
+
+/**
+ * WHY A COMMENT NEEDS A TEST AT ALL.
+ *
+ * Every other claim this piece makes is pinned by something that reddens. This
+ * one was pinned by nothing, in the files most likely to be read first, and it
+ * went false in the most damaging possible way: after GDD §7.2 ruled that the
+ * cut-in composes its own frame and does NOT mount `renderPanels.ts`'s
+ * `renderPanel`, four separate headers went on telling the next reader that the
+ * thing on screen was the licensing panel — `CutInView.tsx`, `cutInGate.ts`,
+ * `WalkoutView.tsx` and `CloseOutView.tsx`. All four are quoted verbatim in
+ * `THE_DELETED_CLAIMS` below, which is a string array and therefore CODE: this
+ * header does not have to write the sentence it bans, and the scan does not
+ * have to make an exception for the file that defines it. A stale comment is
+ * not cosmetic here — it is an instruction to rebuild the thing that was just
+ * graded as broken, and `cutInArt.test.ts` only guards `cutInArt.ts`'s CODE.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IS BANNED, AND WHAT IS DELIBERATELY NOT
+ * ---------------------------------------------------------------------------
+ * NOT the word `renderPanel`. The sentence worth keeping most in this whole
+ * module is the historical one — "this used to mount `renderPanel` and that was
+ * a §7.3 failure" — and a scan that killed it would trade one kind of ignorance
+ * for another. `cutInArt.ts`'s header, `cutInTuning.ts`'s and GDD §7.2 all
+ * explain the change by naming the thing that changed.
+ *
+ * What is banned is the ORDERED CLAIM: a noun for what a cut-in puts on screen,
+ * then the object `THE_PANEL` names, inside one sentence, with nothing
+ * disowning it in between. `THE_DELETED_CLAIMS` holds four real examples and
+ * `THE_HISTORY_WORTH_KEEPING` holds six sentences that are near it and must
+ * survive: a past-tense mounting note, a statement of what `renderPanel` itself
+ * is, and a contrast that says this surface borrows nothing from it. Every one
+ * of the second set is really in the tree today.
+ *
+ * ---------------------------------------------------------------------------
+ * IT BANS THE CLAIM, NOT FIVE SPELLINGS OF ONE NOUN — AND IT USED TO DO THE
+ * SECOND
+ * ---------------------------------------------------------------------------
+ * The previous version of this scan required a PRESENT-TENSE VERB off a list of
+ * eleven, and required the object to be spelled `renderPanel(s)`, or `panel`
+ * immediately behind one of four qualifiers. Three one-edit rewrites of the
+ * sentences in `THE_DELETED_CLAIMS` walked past it with their meaning fully
+ * intact. All three are pinned as strings — which is CODE, so this header does
+ * not have to write out the thing it bans — in
+ * `THE_ESCAPES_THAT_USED_TO_WORK` below. What each edit was:
+ *
+ *   - DELETE TWO WORDS: the qualifier in front of the noun. Bare `panel` was
+ *     not in the vocabulary at all, so a claim that named it went green.
+ *   - SPLIT ON A FULL STOP, leaving a pronoun as the second sentence's subject.
+ *     `it` was not a subject, and a sentence-local gap cannot reach back over
+ *     the stop for the noun a pronoun stands in for.
+ *   - USE ANOTHER VERB. `reuses`, `borrows`, `wraps`, `calls`, `delegates to`,
+ *     `reads`, `takes` — none of the eleven, all the same claim.
+ *
+ * SO THE VERB LIST IS GONE. What is left is a SUBJECT and an OBJECT with a
+ * bounded gap, plus a closed list of things that, appearing in that gap, mean
+ * the sentence is DISOWNING the architecture rather than asserting it. Tense
+ * still does most of the separating — a historical note is written in the past —
+ * but it does it as `PAST_TENSE`, a disowner, rather than as an enumeration of
+ * present-tense verbs that a synonym walks around.
+ *
+ * FIVE GUARDS MAKE THAT WORK, and each is a way the scan is weak:
+ *
+ *   - `PAST_TENSE` — `-ed`, plus the irregulars, minus the present passive: a
+ *     claim in the passive voice is a live claim and only the ACTIVE past is
+ *     history. See the present-passive row of `THE_HELD_OUT_PARAPHRASES`. It
+ *     reads an ADJECTIVE ending in `-ed` as history, which costs it one held-out
+ *     row, pinned there as a miss.
+ *   - `DISOWNED` — negation, contrast, `own`, and the counterfactual moods. If
+ *     one appears between the subject and the panel, the sentence is denying
+ *     the architecture. `own` is load-bearing on real prose in the tree: "the
+ *     cut-in composes its own grid ... the same §7.3 witness the panel goes
+ *     through" is true and must stay green.
+ *   - `PRONOUN_SUBJECT` — `it`/`this` count as a subject only with a `cut-in`,
+ *     `overlay` or `interrupt` ANTECEDENT within `PRONOUN_REACH`, and nothing
+ *     disowning in between. Without that requirement the pattern matches
+ *     FIFTEEN true sentences across TEN files — counted, not estimated — two of
+ *     them about the MEET JUDGING panel, which is a different noun with the same
+ *     spelling and lives in a module this scan has to walk anyway.
+ *   - `NOT_ITS_OWN_CLAUSE` — a panel noun followed by a copula is the subject
+ *     of its own clause, not the object of the claim. Without it "a cut-in is a
+ *     full-screen interrupt and a shelf panel is a thumbnail" — a real contrast
+ *     in `cutInTuning.ts` — goes red.
+ *   - `ASIDE_CHARS` — a clause SET OFF by a pair of commas or by parentheses
+ *     costs the gap one character instead of its length, because an aside is
+ *     not part of the claim's own clause. Added this round, and it is the fifth
+ *     because a pure length bound could not do the job: see `THE THREE LENGTHS`
+ *     below for the measurement that refused the simpler fix. Named subjects
+ *     only — a pronoun subject does not also get to skip a parenthetical.
+ *
+ * IT IS A FLOOR, NOT A PROOF, AND THE FLOOR IS MEASURED RATHER THAN ASSERTED.
+ * Three tables say so and none of them lets this file grade itself:
+ *
+ *   - `THE_HELD_OUT_PARAPHRASES` — twelve rewrites written AFTER the pattern was
+ *     settled and never tuned against; eight caught, four pinned as misses with
+ *     the reason. The largest of ITS four is the REVERSED claim ("the shop panel
+ *     is what the interrupt shows"): an alternative for it was written and
+ *     MEASURED, and it reddened six true sentences in the tree — contrastive
+ *     prose and the judging panel — so it is refused rather than shipped. The
+ *     three LENGTH classes below are bigger holes than any of the four.
+ *   - `THE_MEASURED_BOUNDS` — a straddle pair per length, so that each of the
+ *     three numbers is red one character below AND one character above. Twelve
+ *     hand-written sentences by the same author in the same session is better
+ *     than nothing and is not independence; the twelve missed the escape that
+ *     forced this round entirely.
+ *   - `THE_MECHANICAL_VERDICTS` — twenty-eight variants of the four historical
+ *     claims, produced by a fixed list of edits applied to every claim, so the
+ *     author does not choose which rewrites get tried.
+ */
+const NAMED_SUBJECT = [
+  'the picture',
+  'the cut-?ins?',
+  'a cut-?in',
+  'the overlay',
+  'the interrupt',
+  'the beat',
+  'the shot',
+  'this file',
+  'this piece',
+  'this view',
+  'this screen',
+  'this module',
+  'this surface',
+  'what it shows',
+  'what mounts',
+  'what the overlay shows',
+  'what is drawn',
+  'what arrives',
+  'what is on screen',
+  'what fires',
+].join('|');
+
+/**
+ * The licensing system's composition, however it is named.
+ *
+ * BARE `panel` IS IN, and it is the whole point of this round. `composition`,
+ * `card` and `grid` are only in BEHIND A QUALIFIER: the result card and the
+ * cut-in's own grid are legitimate surfaces this repository talks about
+ * constantly, and banning those nouns outright would ban the true prose.
+ */
+const THE_PANEL = [
+  'renderPanels?\\b',
+  'LicensedPanelView\\b',
+  '(?:licensing|shop|shelf|character-?select|character select|Tier 3|partner) (?:panel|composition|card|grid|frame)\\b',
+  'panels?\\b',
+].join('|');
+
+/** Past tenses that no `-ed` rule can reach. Provenance verbs only. */
+const IRREGULAR_PAST =
+  'was|were|had|did|read|drew|took|came|went|made|held|sat|got|built|wrote|gave|ran|kept|left|put|sent|meant|brought|stood|chose|wore|began';
+
+/** In the gap, any of these means the sentence is denying the architecture. */
+const DISOWNED = [
+  'not',
+  'never',
+  'no longer',
+  'nothing',
+  'no',
+  'cannot',
+  'used to',
+  'rather than',
+  'instead of',
+  'without',
+  'unlike',
+  'as opposed to',
+  'own',
+  'would',
+  'could',
+  'should',
+  'might',
+  'if',
+  'whether',
+  IRREGULAR_PAST,
+].join('|');
+
+/**
+ * A past tense — EXCEPT after a copula, where an `-ed` word is a present
+ * PASSIVE. A claim in the passive voice is still a claim; only the active past
+ * is history. The present-passive row of `THE_HELD_OUT_PARAPHRASES` is the case.
+ */
+const PAST_TENSE = '(?<!\\b(?:is|are|be|been|being|get|gets|got)\\s)\\b\\w+ed\\b';
+const NOTHING_DISOWNING = `(?!\\b(?:${DISOWNED})\\b)(?!${PAST_TENSE})`;
+/** A full stop before a capital ends the sentence, and ends a named claim. */
+const NOT_A_NEW_SENTENCE = '(?!\\.\\s+[A-Z`§])';
+const NOT_ITS_OWN_CLAUSE = '(?!\\s+(?:is|are|was|were)\\b)';
+const AN_ANTECEDENT = '(?:cut-?in|overlay|interrupt)';
+const A_PRONOUN = '(?:it|this|these|they)';
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE THREE LENGTHS, WHAT EACH ONE IS FOR, AND WHAT EACH WAS MEASURED AGAINST
+ * ---------------------------------------------------------------------------
+ * These are the only numbers in the ban, and they used to be pinned by nothing:
+ * `CLAIM_GAP` could go 60 → 48 and `PRONOUN_REACH` 160 → 15 with the suite
+ * green, because every fixture in this file sat well inside both and a SMALLER
+ * reach can only match LESS. Two things fix that, and both are below:
+ *
+ *   - `THE_MEASURED_BOUNDS` is a straddle pair per length — a real claim sitting
+ *     EXACTLY ON the number, asserted caught, and the same claim one character
+ *     longer, asserted MISSED and declared as a miss. Lower the number and the
+ *     first goes green-when-it-should-be-red; raise it and the second does. Each
+ *     number is now pinned within ±1 from both sides.
+ *   - `the ceiling is the tree, not a preference` measures the other end: the
+ *     largest `CLAIM_GAP` at which the whole repository is still clean. It is
+ *     `CLAIM_GAP_CORPUS_CEILING`, and one character past it a TRUE sentence in
+ *     `tools/capture-cutin.mjs` goes red.
+ *
+ * THEY ARE EMPIRICAL. There is no derivation for any of the three; what there is
+ * is a measurement over every file `everyProseFile` returns — about 190 tracked
+ * files and 18,000 sentences, roughly 170 of which carry a `THE_PANEL` token —
+ * and the tests below re-run the part of it that matters rather than quoting
+ * these counts, which drift with the tree and are here only for scale.
+ *
+ * ---------------------------------------------------------------------------
+ * AND A LENGTH BOUND ALONE COULD NOT DO THE JOB — WHICH IS WHY `ASIDE_CHARS`
+ * ---------------------------------------------------------------------------
+ * The escape that forced this round is one qualifying clause spliced into a
+ * sentence this file already shipped, and it is not adversarial — long qualified
+ * clauses are the house style here. Measured, that claim's subject sits 90
+ * characters from its object. The obvious answer, "raise `CLAIM_GAP` to 90", was
+ * MEASURED AND REFUSED: at 66 the tree is no longer clean, and at 90 two true
+ * sentences go red. So the corpus permits at most 65 and the escape needs 90,
+ * and no value of one number is both.
+ *
+ * `ASIDE_CHARS` is what closes it, and it is a STRUCTURAL rule rather than a
+ * longer one: a clause SET OFF by a pair of commas, or by parentheses, costs the
+ * gap ONE character instead of its length. That is what an aside is — it is not
+ * part of the claim's own clause — and it separates the two cases cleanly, since
+ * the true sentence in `tools/` runs 66 unbroken characters and the escape's 90
+ * are 68 of them inside a comma pair. The aside must still hold nothing
+ * disowning and may not cross a full stop, so it launders nothing.
+ *
+ * IT IS OFFERED TO THE NAMED SUBJECTS ONLY. A pronoun subject has already
+ * crossed a sentence boundary to find its antecedent and is the weaker signal of
+ * the two; giving it the aside as well reddens a true sentence in `cutInArt.ts`
+ * at every setting measured. Stated as a bound rather than discovered later: a
+ * PRONOUN-subject claim with a set-off aside in its gap escapes.
+ */
+interface ClaimBounds {
+  /** How far apart the two parts may sit and still be one claim, in characters. */
+  readonly claimGap: number;
+  /** How long one set-off aside may be and still cost the gap a single character. */
+  readonly asideChars: number;
+  /** How far back a pronoun may reach for the noun it stands in for. */
+  readonly pronounReach: number;
+}
+
+/**
+ * MEASURED FLOOR 47, MEASURED CEILING 65. The floor is the longest gap in any
+ * caught fixture in this file; the ceiling is `CLAIM_GAP_CORPUS_CEILING`. 60
+ * sits inside that window and the window is 19 wide, so the exact value is a
+ * CHOICE and not a derivation — what the tests pin is that it is 60 and that
+ * both ends of the window are real.
+ */
+const CLAIM_GAP = 60;
+/**
+ * MEASURED FLOOR 68 — the inner length of the escape's clause, which is one
+ * ordinary qualifying clause of this codebase's prose. NO CEILING WAS FOUND: the
+ * tree is still clean at 800, so this is the one of the three that the corpus
+ * does not bound at all. 80 is about one printed line, which is what an aside
+ * usually is here, and the straddle pair below is the whole of its pinning.
+ */
+const ASIDE_CHARS = 80;
+/**
+ * MEASURED FLOOR 15 — `THE_ESCAPES_THAT_USED_TO_WORK`'s `takes` row, whose
+ * antecedent sits 15 characters behind its pronoun. NO CEILING WAS FOUND either:
+ * the tree is clean at 3000. So 160 is a POLICY value — about one sentence of
+ * this prose, which is as far as a reader carries an antecedent — and not a
+ * corpus reading. It is pinned by the straddle pair and by nothing else.
+ */
+const PRONOUN_REACH = 160;
+
+const THE_BOUNDS: ClaimBounds = {
+  claimGap: CLAIM_GAP,
+  asideChars: ASIDE_CHARS,
+  pronounReach: PRONOUN_REACH,
+};
+
+/**
+ * THE LARGEST `CLAIM_GAP` AT WHICH THE WHOLE TREE IS STILL CLEAN. Measured, and
+ * re-measured by `the ceiling is the tree, not a preference`, which also names
+ * the sentence that goes red one character past it.
+ */
+const CLAIM_GAP_CORPUS_CEILING = 65;
+
+/** The ban, at whatever lengths it is asked for. */
+function mountsThePanel(bounds: ClaimBounds): RegExp {
+  const ordinary = `${NOT_A_NEW_SENTENCE}${NOTHING_DISOWNING}[\\s\\S]`;
+  const insideAnAside = `(?:${NOT_A_NEW_SENTENCE}${NOTHING_DISOWNING}[^,()]){0,${bounds.asideChars}}?`;
+  const anAside = `(?:,${insideAnAside},|\\(${insideAnAside}\\))`;
+  const namedGap = `(?:${anAside}|${ordinary}){0,${bounds.claimGap}}?`;
+  /** No aside for a pronoun subject — see the header above. */
+  const pronounGap = `(?:${ordinary}){0,${bounds.claimGap}}?`;
+  /** The pronoun's reach DOES cross a full stop. That is what it is for. */
+  const acrossAFullStop = `(?:${NOTHING_DISOWNING}[\\s\\S]){0,${bounds.pronounReach}}?`;
+  const pronounSubject = `${AN_ANTECEDENT}\\b${acrossAFullStop}\\b${A_PRONOUN}`;
+  return new RegExp(
+    `(?:\\b(?:${NAMED_SUBJECT})\\b${namedGap}|\\b(?:${pronounSubject})\\b${pronounGap})` +
+      `\\b(?:${THE_PANEL})${NOT_ITS_OWN_CLAUSE}`,
+    'gi',
+  );
+}
+
+const MOUNTS_THE_PANEL = mountsThePanel(THE_BOUNDS);
+
+// ---------------------------------------------------------------------------
+// THE THREE LENGTHS, MEASURED OFF A CLAIM RATHER THAN ASSERTED ABOUT IT
+// ---------------------------------------------------------------------------
+// `THE_MEASURED_BOUNDS` records a length for every fixture it holds, and these
+// three functions re-derive it from the string. A fixture whose wording drifted
+// would otherwise stop straddling the bound it is named for and nothing would
+// say so — which is how a straddle pair turns back into two more sentences that
+// happen to pass.
+
+/** Characters between the nearest named subject and the object it claims. */
+function ordinaryGapOf(claim: string): number {
+  const subjects = [...claim.matchAll(new RegExp(`\\b(?:${NAMED_SUBJECT})\\b`, 'gi'))];
+  const objects = [...claim.matchAll(new RegExp(`\\b(?:${THE_PANEL})`, 'gi'))];
+  let best = -1;
+  for (const subject of subjects) {
+    for (const object of objects) {
+      const distance = object.index - (subject.index + subject[0].length);
+      if (distance >= 0 && (best === -1 || distance < best)) best = distance;
+    }
+  }
+  return best;
+}
+
+/** Characters inside the one comma-set-off aside in a claim. */
+function asideInnerLengthOf(claim: string): number {
+  const found = /,([^,()]*),/.exec(claim);
+  return found === null ? -1 : (found[1] ?? '').length;
+}
+
+/** Characters between an antecedent and the pronoun standing in for it. */
+function antecedentReachOf(claim: string): number {
+  const antecedent = new RegExp(`${AN_ANTECEDENT}\\b`, 'i').exec(claim);
+  if (antecedent === null) return -1;
+  const from = antecedent.index + antecedent[0].length;
+  const pronoun = new RegExp(`\\b${A_PRONOUN}\\b`, 'i').exec(claim.slice(from));
+  return pronoun === null ? -1 : pronoun.index;
+}
+
+/** Every claim of that shape in one repository-relative file's comments. */
+function panelClaimsIn(repoRel: string): readonly string[] {
+  return [...proseOf(repoRel).matchAll(MOUNTS_THE_PANEL)].map((match) => match[0]);
+}
+
+describe('no comment says the cut-in mounts the shop panel — GDD §7.2', () => {
+  /**
+   * THE FOUR SENTENCES THAT WERE REALLY IN THE TREE, verbatim off the commit
+   * that carried them. A planted fixture would only prove the regex matches
+   * something the same author wrote to be matched; these are the actual prose,
+   * including the one in `CutInView.tsx` that survived the §7.3 fix by two
+   * rounds and was still instructing the next builder to mount the panel.
+   */
+  const THE_DELETED_CLAIMS: readonly string[] = [
+    'Nothing here is drawn for the cut-in: the picture is the Tier 3 panel `src/licensing/renderPanels.ts` already produces, read through §7.3’s surface witness.',
+    'What the overlay shows is the placeholder Tier 3 panel `src/licensing/` already renders, read through §7.3’s surface witness (see `cutInArt.ts`).',
+    'There is still no cut-in ART. §7.2 says to "cut art entirely from the early prototypes"; what mounts is the placeholder Tier 3 panel the licensing system already renders.',
+    'There is still no cut-in ART (§7.2, GDD §11): what mounts is the placeholder Tier 3 panel the licensing system already renders.',
+  ];
+
+  /**
+   * SENTENCES THAT MUST STAY GREEN, and every one is really in the tree today —
+   * see the non-vacuity check below, which fails if the module stops explaining
+   * itself. A scan that killed these would delete the record of WHY the
+   * architecture changed, which is the more useful half of the prose.
+   */
+  const THE_HISTORY_WORTH_KEEPING: readonly string[] = [
+    '`renderPanel` is the CHARACTER-SELECT / SHOP composition, one layer above the identity read.',
+    'It used to mount `renderPanel`, which is the character-select / shop composition.',
+    'the cut-in composes its own shape rather than borrowing the shop panel',
+    'a cut-in is a full-screen interrupt and a shelf panel is a thumbnail',
+    'GDD §7.2’s promise that the art pass is "a row in the identity table and not a rewiring" was false for as long as the cut-in read the panel.',
+    'While the cut-in mounted the panel, GDD §7.2’s "the art pass is a row in the identity table and not a rewiring" was false as written.',
+  ];
+
+  /**
+   * ONE-EDIT REWRITES OF THE SENTENCES ABOVE THAT THE PREVIOUS SCAN LET THROUGH.
+   *
+   * Each is one of the four sentences above, edited once, with its meaning left
+   * fully intact — still the architecture §7.2 ruled against — and each was
+   * GREEN before this round. They are the reason the verb list is gone and bare
+   * `panel` is in.
+   */
+  const THE_ESCAPES_THAT_USED_TO_WORK: readonly (readonly [string, string])[] = [
+    [
+      'two words deleted from [3]',
+      'There is still no cut-in ART (§7.2, GDD §11): what mounts is the placeholder panel the licensing system already renders.',
+    ],
+    [
+      'two words deleted from [1]',
+      'What the overlay shows is the placeholder panel `src/licensing/` already renders, read through §7.3’s surface witness.',
+    ],
+    [
+      'two words deleted from [2]',
+      'There is still no cut-in ART. §7.2 says to "cut art entirely from the early prototypes"; what mounts is the placeholder panel the licensing system already renders.',
+    ],
+    [
+      'split across a full stop, so the subject is a pronoun',
+      'There is still no cut-in ART. It mounts the placeholder Tier 3 panel the licensing system already renders.',
+    ],
+    [
+      'split across a full stop, with a bare panel',
+      'There is still no cut-in ART. It mounts the placeholder panel the licensing system already renders.',
+    ],
+    ['a verb outside the eleven — reuses', 'There is still no cut-in ART: the cut-in reuses the Tier 3 panel.'],
+    ['a verb outside the eleven — borrows', 'The overlay borrows the licensing panel.'],
+    ['a verb outside the eleven — wraps', 'This view wraps the shop panel.'],
+    ['a verb outside the eleven — delegates to', 'The cut-in delegates to renderPanel for its picture.'],
+    ['a verb outside the eleven — calls', 'The interrupt calls renderPanel.'],
+    [
+      'a verb outside the eleven — takes',
+      'The cut-in is unchanged. It takes the character-select panel and scales it up.',
+    ],
+  ];
+
+  /**
+   * TWELVE PARAPHRASES WRITTEN AFTER THE PATTERN WAS SETTLED, AND NEVER TUNED
+   * AGAINST. Eight are caught. The four that are not are pinned as MISSES.
+   *
+   * WHY THIS TABLE EXISTS. `THE_DELETED_CLAIMS` is simultaneously the corpus the
+   * pattern was fitted to and, until this round, the only evidence it worked —
+   * which is the self-agreement `SITTING_BINDINGS` refuses next door. A pattern
+   * scoring itself on its own training set says nothing about the next sentence
+   * somebody writes. These twelve were written, then run ONCE, and the verdicts
+   * recorded as they came out. `false` is not a to-do: it is the measured bound
+   * on this ban, and a future round that widens the pattern to catch one has to
+   * come here and say so.
+   *
+   * AND TWELVE OF THE AUTHOR'S OWN SENTENCES IS NOT INDEPENDENCE, which this
+   * table used to imply and which the next round disproved: the escape that
+   * forced `ASIDE_CHARS` is a clause insertion, the most ordinary edit in this
+   * codebase's register, and it is in none of the twelve. The four misses below
+   * are also not the biggest holes this ban has — the three LENGTH classes in
+   * `THE_MEASURED_BOUNDS` are bigger, and they are declared there. What this
+   * table is, is twelve sentences the pattern was never fitted to, which is
+   * worth having and is not a coverage claim.
+   */
+  const THE_HELD_OUT_PARAPHRASES: readonly (readonly [boolean, string, string])[] = [
+    [true, 'a named subject and a bare panel', 'What the interrupt puts on screen is the shop panel, scaled up.'],
+    [true, 'leans on', 'The cut-in still leans on `renderPanel` for its picture.'],
+    [true, 'comes out of, and a qualified composition', "The overlay's picture comes straight out of the licensing shelf composition."],
+    [true, 'hands the frame to', 'This view hands the whole frame to the character-select panel.'],
+    [true, 'the same panel as another screen', 'Today the interrupt shows the same panel the shop screen does.'],
+    [true, 'a PRESENT PASSIVE, which is not history', 'The picture on the cut-in is produced by `renderPanels.ts`.'],
+    [
+      false,
+      'REVERSED: the panel first, the subject second. An alternative for this was written and measured; it reddened six true sentences in the tree, so it is refused.',
+      'The shop panel is what the interrupt puts on screen.',
+    ],
+    [true, 'no verb at all — a colon', "The cut-in's picture: the licensing panel, at 3x."],
+    [true, 'a third subject in the same sentence', 'There is no cut-in art yet, so the beat borrows the shop panel.'],
+    [
+      false,
+      'PLURAL AND ARTICLE-LESS: every subject in the vocabulary carries `the` or `a`, so a sentence opening on a bare `Cut-ins` has no subject to match.',
+      'Cut-ins mount the licensing panel until the art lands.',
+    ],
+    [
+      false,
+      'A PRONOUN WITH NO ANTECEDENT within PRONOUN_REACH. Deliberate: a bare `it` beside a bare `panel` reddens true prose all over the tree.',
+      'It reuses the shop panel.',
+    ],
+    [
+      false,
+      'AN -ed ADJECTIVE read as a past tense. `scaled-up` trips PAST_TENSE and the gap closes.',
+      'The interrupt is a scaled-up shelf panel.',
+    ],
+  ];
+
+  it('THE SCAN SEES THE DELETED SENTENCES — the positive control', () => {
+    // Without this the whole check below is theatre: a pattern that had stopped
+    // matching would report every file clean and look exactly like a pass.
+    for (const claim of THE_DELETED_CLAIMS) {
+      expect(claim.match(MOUNTS_THE_PANEL), `the scan cannot see: ${claim}`).not.toBeNull();
+    }
+  });
+
+  it('AND IT SEES THE ONE-EDIT REWRITES THAT USED TO WALK PAST IT', () => {
+    // The headline defect of the previous round: the ban scanned for five
+    // spellings of one noun and a list of eleven verbs, so deleting two words
+    // from a real banned sentence — "the placeholder Tier 3 panel" to "the
+    // placeholder panel" — put it back in a header, telling the next builder to
+    // rebuild the architecture GDD §7.2 ruled against, with the suite green.
+    for (const [how, claim] of THE_ESCAPES_THAT_USED_TO_WORK) {
+      expect(claim.match(MOUNTS_THE_PANEL), `${how} still escapes: ${claim}`).not.toBeNull();
+    }
+  });
+
+  it('AND HERE IS WHAT IT SCORED ON TWELVE SENTENCES IT WAS NOT FITTED TO', () => {
+    // Held out, run once, verdicts recorded as they came. The FALSE rows are as
+    // load-bearing as the true ones: they are what stops this file claiming a
+    // coverage it has not got.
+    for (const [caught, why, claim] of THE_HELD_OUT_PARAPHRASES) {
+      expect(
+        claim.match(MOUNTS_THE_PANEL) !== null,
+        `${caught ? 'this used to be caught and now is not' : 'this used to be missed and now is not'}` +
+          ` — ${why}: ${claim}`,
+      ).toBe(caught);
+    }
+    // The summary number, pinned, so "8 of 12" cannot quietly become "4 of 12"
+    // by a widening somewhere else in the pattern.
+    const hits = THE_HELD_OUT_PARAPHRASES.filter(([caught]) => caught).length;
+    expect(hits, 'the measured held-out score moved').toBe(8);
+    expect(THE_HELD_OUT_PARAPHRASES.length, 'the held-out set changed size').toBe(12);
+  });
+
+  // -------------------------------------------------------------------------
+  // THE ESCAPE THAT FORCED THIS ROUND — one clause, and not an adversarial one
+  // -------------------------------------------------------------------------
+
+  /**
+   * A SENTENCE THIS FILE REALLY SHIPPED, WITH ONE CLAUSE SPLICED INTO IT.
+   *
+   * `THE_DELETED_CLAIMS[1]` with `, until GDD §11’s art pass lands and there is
+   * a real portrait to draw,` between its subject and its object, and nothing
+   * else changed. The meaning is the banned one, the register is this
+   * repository's own — long qualified clauses are the house style, so the edit
+   * is not an attack, it is what somebody writes on a Tuesday.
+   *
+   * IT DEFEATED THE BAN PURELY BY LENGTH. Measured, its subject sits 90
+   * characters from its object against a bound of 60. The obvious fix — raise
+   * the bound — was measured and refused; see `the ceiling is the tree, not a
+   * preference`, where 66 is already too far. `ASIDE_CHARS` is what catches it.
+   */
+  const THE_ESCAPE_THAT_FORCED_THIS_ROUND =
+    'What the overlay shows, until GDD §11’s art pass lands and there is a real portrait to draw, is the placeholder Tier 3 panel the licensing system already renders.';
+
+  it('THE LONG-CLAUSE ESCAPE IS CAUGHT, AND ONLY THE ASIDE RULE CATCHES IT', () => {
+    expect(
+      THE_ESCAPE_THAT_FORCED_THIS_ROUND.match(MOUNTS_THE_PANEL),
+      'the escape this round exists for is loose again',
+    ).not.toBeNull();
+    // ...and here is WHY it is caught, which is the half a green assertion
+    // cannot show. Its subject really is 90 characters from its object — far
+    // outside `CLAIM_GAP` — so a bigger `CLAIM_GAP` is not what is catching it.
+    const SO_FAR_APART_NO_BOUND_THE_TREE_ALLOWS_WOULD_REACH = 90;
+    expect(ordinaryGapOf(THE_ESCAPE_THAT_FORCED_THIS_ROUND)).toBe(
+      SO_FAR_APART_NO_BOUND_THE_TREE_ALLOWS_WOULD_REACH,
+    );
+    expect(SO_FAR_APART_NO_BOUND_THE_TREE_ALLOWS_WOULD_REACH).toBeGreaterThan(
+      CLAIM_GAP_CORPUS_CEILING,
+    );
+    // With the aside rule switched off — `asideChars: 0` — the same string walks
+    // straight past, which is exactly what it did before this round.
+    expect(
+      THE_ESCAPE_THAT_FORCED_THIS_ROUND.match(mountsThePanel({ ...THE_BOUNDS, asideChars: 0 })),
+      'the aside rule is not what catches the escape — something else changed',
+    ).toBeNull();
+  });
+
+  // -------------------------------------------------------------------------
+  // EACH OF THE THREE LENGTHS, STRADDLED
+  // -------------------------------------------------------------------------
+
+  interface BoundFixture {
+    /** Which length this pair straddles. */
+    readonly bound: 'CLAIM_GAP' | 'ASIDE_CHARS' | 'PRONOUN_REACH';
+    readonly caught: boolean;
+    /** The length this claim measures, in that bound's own unit. */
+    readonly measures: number;
+    readonly why: string;
+    readonly claim: string;
+  }
+
+  /**
+   * SIX CLAIMS, TWO PER LENGTH, ONE CHARACTER APART.
+   *
+   * WHAT THIS TABLE IS FOR. Before it, each of these numbers was read in exactly
+   * one place and pinned by nothing: `CLAIM_GAP` could go 60 → 48 and
+   * `PRONOUN_REACH` 160 → 15 with every test in this file still green, because
+   * a SMALLER reach can only match LESS and the tree was already clean. Nothing
+   * distinguished 48 from 60 from 600.
+   *
+   * Every row is a real claim of the banned shape, differing from its partner by
+   * one word — usually one CHARACTER, an article or a plural — with the shorter
+   * of the pair asserted CAUGHT and the longer asserted MISSED. So lowering a
+   * bound turns the caught row green-when-it-should-be-red, and raising it turns
+   * the missed row red. Both directions, ±1.
+   *
+   * THE MISSES ARE THE LENGTH CLASS, DECLARED. Read as prose they say: a subject
+   * more than `CLAIM_GAP` characters of ordinary text from its object escapes; a
+   * set-off aside longer than `ASIDE_CHARS` is not skipped, so the claim around
+   * it escapes; a pronoun more than `PRONOUN_REACH` characters from its
+   * antecedent escapes. Those are bigger holes than most of what
+   * `THE_HELD_OUT_PARAPHRASES` declares, and until now none of the three was
+   * written down anywhere.
+   */
+  const THE_MEASURED_BOUNDS: readonly BoundFixture[] = [
+    {
+      bound: 'CLAIM_GAP',
+      caught: true,
+      measures: 60,
+      why: 'a qualifying phrase that fills the gap exactly',
+      claim:
+        'What mounts above the platform on a maximal attempt is the placeholder Tier 3 panel the licensing system already renders.',
+    },
+    {
+      bound: 'CLAIM_GAP',
+      caught: false,
+      measures: 61,
+      why: 'THE LENGTH CLASS: a subject more than CLAIM_GAP characters of ORDINARY text from its object escapes. One letter — a plural — is the whole edit.',
+      claim:
+        'What mounts above the platforms on a maximal attempt is the placeholder Tier 3 panel the licensing system already renders.',
+    },
+    {
+      bound: 'ASIDE_CHARS',
+      caught: true,
+      measures: 80,
+      why: 'a set-off clause that fills the aside exactly, so the gap is charged one character for it',
+      claim:
+        'What the overlay shows, until the art pass GDD §11 leaves for later finally lands and a portrait exists, is the placeholder Tier 3 panel the licensing system already renders.',
+    },
+    {
+      bound: 'ASIDE_CHARS',
+      caught: false,
+      measures: 81,
+      why: 'THE LENGTH CLASS: an aside longer than ASIDE_CHARS is not skipped, so the claim around it is charged the full 103 characters and escapes.',
+      claim:
+        'What the overlay shows, until the art pass GDD §11 leaves for later finally lands and a portrait arrives, is the placeholder Tier 3 panel the licensing system already renders.',
+    },
+    {
+      bound: 'PRONOUN_REACH',
+      caught: true,
+      measures: 160,
+      why: 'an antecedent that sits exactly at the end of the pronoun’s reach',
+      claim:
+        'The cut-in is the loudest thing in an app and the one screen that stops a lifter in the middle of a session so a sentence a reader finds here has to survive an art pass. It shows the shop panel.',
+    },
+    {
+      bound: 'PRONOUN_REACH',
+      caught: false,
+      measures: 161,
+      why: 'THE LENGTH CLASS: a pronoun more than PRONOUN_REACH characters from its antecedent has no subject to match, so the claim escapes. `an` to `the` is the edit.',
+      claim:
+        'The cut-in is the loudest thing in an app and the one screen that stops a lifter in the middle of a session so a sentence a reader finds here has to survive the art pass. It shows the shop panel.',
+    },
+  ];
+
+  const MEASURE: Readonly<Record<BoundFixture['bound'], (claim: string) => number>> = {
+    CLAIM_GAP: ordinaryGapOf,
+    ASIDE_CHARS: asideInnerLengthOf,
+    PRONOUN_REACH: antecedentReachOf,
+  };
+  const VALUE: Readonly<Record<BoundFixture['bound'], number>> = {
+    CLAIM_GAP,
+    ASIDE_CHARS,
+    PRONOUN_REACH,
+  };
+
+  it('EVERY BOUND HAS A CLAIM SITTING ON IT AND A CLAIM ONE CHARACTER PAST IT', () => {
+    for (const row of THE_MEASURED_BOUNDS) {
+      // The fixture still measures what it says it measures. Without this the
+      // pair could drift apart on a reword and stop straddling anything.
+      expect(
+        MEASURE[row.bound](row.claim),
+        `${row.bound}: this fixture no longer measures ${row.measures} — ${row.claim}`,
+      ).toBe(row.measures);
+      // ...and it really is ON the bound, or one past it. THIS is the assertion
+      // that makes the number un-lowerable and un-raisable in silence.
+      expect(
+        row.measures,
+        `${row.bound} moved and this fixture no longer straddles it`,
+      ).toBe(row.caught ? VALUE[row.bound] : VALUE[row.bound] + 1);
+      // ...and the ban agrees.
+      expect(
+        row.claim.match(MOUNTS_THE_PANEL) !== null,
+        `${row.bound} ${row.caught ? 'should catch' : 'is declared to MISS'} at ` +
+          `${row.measures} — ${row.why}: ${row.claim}`,
+      ).toBe(row.caught);
+    }
+    // Three bounds, two rows each, and no bound left un-straddled.
+    for (const bound of ['CLAIM_GAP', 'ASIDE_CHARS', 'PRONOUN_REACH'] as const) {
+      const rows = THE_MEASURED_BOUNDS.filter((row) => row.bound === bound);
+      expect(rows.map((row) => row.caught).sort(), `${bound} has no straddle pair`).toEqual([
+        false,
+        true,
+      ]);
+    }
+  });
+
+  it('the ceiling is the tree, not a preference — CLAIM_GAP cannot simply be raised', () => {
+    // THE OTHER END OF THE WINDOW, and the reason the escape above is caught by
+    // a structural rule rather than by a bigger number. `CLAIM_GAP` is bounded
+    // BELOW by the straddle pair and ABOVE by the repository itself: one
+    // character past `CLAIM_GAP_CORPUS_CEILING` a TRUE sentence goes red.
+    //
+    // Measured over every file `everyProseFile` returns, at two settings.
+    const files = everyProseFile();
+    const dirtyAt = (claimGap: number): readonly string[] => {
+      const pattern = mountsThePanel({ ...THE_BOUNDS, claimGap });
+      return files.filter((file) => [...proseOf(file).matchAll(pattern)].length > 0);
+    };
+    expect(CLAIM_GAP, 'CLAIM_GAP is above the measured ceiling').toBeLessThanOrEqual(
+      CLAIM_GAP_CORPUS_CEILING,
+    );
+    expect(dirtyAt(CLAIM_GAP_CORPUS_CEILING), 'the measured ceiling moved down').toEqual([]);
+    // ...and one past it, a sentence about where the OVERLAY'S OWN panel sits
+    // when a moment's line wraps — nothing to do with the licensing
+    // composition — goes red. Named, so the ceiling is a fact about a file
+    // somebody can go and read rather than a number in this header.
+    expect(dirtyAt(CLAIM_GAP_CORPUS_CEILING + 1), 'the measured ceiling moved up').toEqual([
+      'tools/capture-cutin.mjs',
+    ]);
+  });
+
+  /**
+   * WHAT THE ASIDE RULE COSTS, MEASURED — TRUE SENTENCES IT REDDENS.
+   *
+   * A ban that widens without saying what it broke is the same defect one
+   * direction round. `[redWithoutTheAsideRule, redWithIt, sentence]`, and every
+   * sentence here is TRUE — a contrast between this overlay and the shelf, the
+   * kind of thing `cutInTuning.ts` writes constantly. They are strings and
+   * therefore CODE, so this table does not put them in the tree's prose.
+   *
+   * WHAT THE MEASUREMENT SAYS. Row 1 was already red before this round: a short
+   * contrast has always tripped the ban, and that cost is not new. Rows 2 to 4
+   * are NEW — a long set-off clause used to hold the two halves more than
+   * `CLAIM_GAP` apart, and now it costs one character, so the contrast around it
+   * closes up and reddens. That is the price of catching the escape, and it is
+   * the direction this ban should fail in: a red on a true sentence is a
+   * reword with a message attached, and a green on a false one is an
+   * instruction to rebuild the architecture GDD §7.2 ruled against.
+   *
+   * NONE OF THEM IS IN THE TREE TODAY — `NO FILE IN THE TREE…` reads zero over
+   * all 191 tracked files, and `the ceiling is the tree…` is what stops the
+   * price rising quietly.
+   */
+  const THE_TRUE_SENTENCES_THIS_BAN_REDDENS: readonly (readonly [boolean, boolean, string])[] = [
+    [true, true, 'The cut-in, drawn at 3x, sits beside the shop panel on the shelf.'],
+    [
+      false,
+      true,
+      'The cut-in, which the capture tool photographs on every run of the harness, is wider than the shop panel.',
+    ],
+    [
+      false,
+      true,
+      'The overlay, whose grid the phone upscales by a whole number that a wider caption lowers, has more room than the shelf panel.',
+    ],
+    [
+      false,
+      true,
+      'This view, the last thing a builder reaches for when a beat looks wrong on a phone, prints one line where the shop panel prints four.',
+    ],
+  ];
+
+  it('AND HERE IS WHAT THE WIDENING COSTS — true sentences that go red', () => {
+    const withoutTheAsideRule = mountsThePanel({ ...THE_BOUNDS, asideChars: 0 });
+    for (const [wasRed, isRed, sentence] of THE_TRUE_SENTENCES_THIS_BAN_REDDENS) {
+      expect(sentence.match(withoutTheAsideRule) !== null, `before: ${sentence}`).toBe(wasRed);
+      expect(sentence.match(MOUNTS_THE_PANEL) !== null, `after: ${sentence}`).toBe(isRed);
+    }
+    // The cost is real and it is bounded: three of the four are new this round.
+    const newlyRed = THE_TRUE_SENTENCES_THIS_BAN_REDDENS.filter(
+      ([wasRed, isRed]) => !wasRed && isRed,
+    ).length;
+    expect(newlyRed, 'the measured cost of the aside rule moved').toBe(3);
+  });
+
+  // -------------------------------------------------------------------------
+  // ONE-EDIT VARIANTS THE AUTHOR DID NOT CHOOSE
+  // -------------------------------------------------------------------------
+
+  /**
+   * SEVEN EDITS, APPLIED MECHANICALLY TO ALL FOUR HISTORICAL CLAIMS.
+   *
+   * WHY NOT MORE HAND-WRITTEN PARAPHRASES. `THE_HELD_OUT_PARAPHRASES` is twelve
+   * sentences the same author wrote in the same session as the pattern, and that
+   * is better than nothing and is not independence: the author picks which
+   * rewrites get tried, and the ones that would fail are the ones that do not
+   * occur to them. The escape that forced this round is the proof — it is a
+   * clause insertion, the most ordinary edit in this codebase's register, and it
+   * was in none of the twelve.
+   *
+   * So the edits below are a fixed list of TRANSFORMATIONS, applied to every one
+   * of `THE_DELETED_CLAIMS` without the author choosing which pairing gets
+   * tried. 4 × 7 = 28 variants, and the verdict vector is pinned whole. Any
+   * change to the pattern that moves any one of the 28 has to come here and say
+   * which, which is the property the twelve hand-written rows cannot have.
+   *
+   * THE MISSES ARE RECORDED, NOT FIXED. Same rule as the held-out table: `false`
+   * is a measured bound on this ban and not a to-do.
+   */
+  const insertAfterTheLastSubject = (claim: string, insert: string): string => {
+    const subjects = [...claim.matchAll(new RegExp(`\\b(?:${NAMED_SUBJECT})\\b`, 'gi'))];
+    const object = new RegExp(`\\b(?:${THE_PANEL})`, 'i').exec(claim);
+    if (object === null) return claim;
+    // The LAST subject before the object, because that is the one an author
+    // would qualify and the one whose gap the edit actually stretches.
+    const at = subjects
+      .filter((subject) => subject.index + subject[0].length <= object.index)
+      .map((subject) => subject.index + subject[0].length)
+      .pop();
+    return at === undefined ? claim : `${claim.slice(0, at)}${insert}${claim.slice(at)}`;
+  };
+
+  /** `null` where an edit has nothing to bite on in that claim. */
+  const changedOr = (claim: string, edited: string): string | null =>
+    edited === claim ? null : edited;
+
+  const ONE_EDIT_AWAY: readonly (readonly [string, (claim: string) => string | null])[] = [
+    [
+      'drop the qualifier in front of the noun',
+      (claim) =>
+        changedOr(
+          claim,
+          claim.replace(/\b(?:placeholder |Tier 3 |licensing |shop |shelf )+panel/gi, 'panel'),
+        ),
+    ],
+    ['pluralise the object', (claim) => changedOr(claim, claim.replace(/\bpanel\b/gi, 'panels'))],
+    [
+      'drop the article from the subject',
+      (claim) =>
+        changedOr(
+          claim,
+          claim.replace(/\bthe (cut-?in|overlay|interrupt|picture|beat|shot)\b/gi, '$1s'),
+        ),
+    ],
+    [
+      'splice in a set-off aside',
+      (claim) =>
+        changedOr(
+          claim,
+          insertAfterTheLastSubject(
+            claim,
+            ', until GDD §11’s art pass lands and there is a real portrait to draw,',
+          ),
+        ),
+    ],
+    [
+      'splice in a plain qualifying phrase',
+      (claim) =>
+        changedOr(claim, insertAfterTheLastSubject(claim, ' above the platform on a maximal attempt')),
+    ],
+    [
+      'wrap a qualifier in parentheses',
+      (claim) => changedOr(claim, insertAfterTheLastSubject(claim, ' (as of today)')),
+    ],
+    ['shout it', (claim) => changedOr(claim, claim.toUpperCase())],
+  ];
+
+  /**
+   * THE VERDICT VECTOR, MEASURED ONCE AND WRITTEN DOWN.
+   *
+   * `"<claim index>/<edit index> <verdict>"` for all 28 pairings, in order.
+   * `caught` is the wanted answer; `MISSED` is a hole in this ban and is
+   * recorded rather than fixed; `n/a` is an edit with nothing to bite on in that
+   * claim — the article-drop cannot run on a claim whose subject is `what
+   * mounts`, which carries no article to drop.
+   *
+   * Read as prose: the only sentences that beat the ban here are the two where
+   * the article really could be dropped, and they land on the hole
+   * `THE_HELD_OUT_PARAPHRASES` already declares — the subject vocabulary is a
+   * list of phrases that all begin `the`, `a` or `what`, so a bare plural has no
+   * subject to match. Found again, this time by a route nobody chose.
+   */
+  const THE_MECHANICAL_VERDICTS: readonly string[] = [
+    '0/0 caught',
+    '0/1 caught',
+    '0/2 MISSED',
+    '0/3 caught',
+    '0/4 caught',
+    '0/5 caught',
+    '0/6 caught',
+    '1/0 caught',
+    '1/1 caught',
+    '1/2 MISSED',
+    '1/3 caught',
+    '1/4 caught',
+    '1/5 caught',
+    '1/6 caught',
+    '2/0 caught',
+    '2/1 caught',
+    '2/2 n/a',
+    '2/3 caught',
+    '2/4 caught',
+    '2/5 caught',
+    '2/6 caught',
+    '3/0 caught',
+    '3/1 caught',
+    '3/2 n/a',
+    '3/3 caught',
+    '3/4 caught',
+    '3/5 caught',
+    '3/6 caught',
+  ];
+
+  it('AND HERE IS WHAT IT SCORED ON 28 VARIANTS NOBODY PICKED', () => {
+    const verdicts: string[] = [];
+    const seen = new Set<string>();
+    THE_DELETED_CLAIMS.forEach((claim, claimIndex) => {
+      ONE_EDIT_AWAY.forEach(([, edit], editIndex) => {
+        const variant = edit(claim);
+        if (variant !== null) seen.add(variant);
+        const verdict =
+          variant === null ? 'n/a' : variant.match(MOUNTS_THE_PANEL) === null ? 'MISSED' : 'caught';
+        verdicts.push(`${claimIndex}/${editIndex} ${verdict}`);
+      });
+    });
+    // Two edits that collapsed to one sentence would inflate the count without
+    // testing anything new.
+    expect(seen.size, 'two edits produced the same sentence').toBe(
+      verdicts.filter((line) => !line.endsWith('n/a')).length,
+    );
+    expect(
+      verdicts,
+      'the mechanical verdict vector moved. A `MISSED` is a variant of a sentence GDD §7.2 ' +
+        'ruled against that this ban does not see. Say which and why, here.',
+    ).toEqual(THE_MECHANICAL_VERDICTS);
+    // Non-vacuity: a table of 28 `n/a`s would agree with itself for ever.
+    expect(
+      verdicts.filter((line) => line.endsWith('caught')).length,
+      'the mechanical edits stopped producing anything the ban can see',
+    ).toBeGreaterThan(THE_MECHANICAL_VERDICTS.length / 2);
+  });
+
+  it('and it does NOT see the history that explains why they went — the negative control', () => {
+    for (const kept of THE_HISTORY_WORTH_KEEPING) {
+      expect(kept.match(MOUNTS_THE_PANEL), `the scan would delete: ${kept}`).toBeNull();
+    }
+  });
+
+  it('THE VIEW’S HEADER NAMES EVERY TUNING CONSTANT THE VIEW READS', () => {
+    // The claim this replaces was "every number it uses is `CUT_IN_LAYOUT`'s",
+    // which was false in the same file that made it: the arrival animation reads
+    // `CUT_IN_TUNING.ENTER_MS`. Same species as the panel claim — prose that
+    // describes an architecture the code next to it does not have — and one line
+    // of it is enough to send a reader looking in the wrong module.
+    //
+    // ONE DIRECTION ONLY: every `CUT_IN_TUNING.X` in the CODE must appear in the
+    // PROSE. The reverse would be wrong, because the header correctly discusses
+    // constants this file does not read — `DISMISS_ENABLED_AFTER_MS` is the
+    // host's and the header says exactly that.
+    const used = [...new Set([...VIEW.matchAll(/CUT_IN_TUNING\.([A-Z_]+)/g)].map((m) => m[1]))];
+    expect(used.length, 'the view reads no tuning constant at all — check the scan').toBeGreaterThan(
+      0,
+    );
+    const header = prose('cutin/CutInView.tsx');
+    for (const name of used) {
+      expect(header, `the header does not mention CUT_IN_TUNING.${name}, which the code reads`).toContain(
+        name,
+      );
+    }
+  });
+
+  it('the reader really is reading comments, and only comments', () => {
+    // `prose` is the complement of `code`, so a scan built on it can see what
+    // every other scan in this file is blind to — and must be blind to what
+    // they see, or the two would double-count.
+    expect(prose('cutin/CutInView.tsx')).toMatch(/THE WHOLE SCREEN IS THE DISMISS TARGET/);
+    expect(prose('cutin/CutInView.tsx')).not.toMatch(/onPress=\{onDismiss\}/);
+    expect(code('cutin/CutInView.tsx')).toMatch(/onPress=\{onDismiss\}/);
+    expect(code('cutin/CutInView.tsx')).not.toMatch(/THE WHOLE SCREEN IS THE DISMISS TARGET/);
+  });
+
+  it('NO FILE IN THE TREE SAYS THE CUT-IN’S PICTURE IS THE PANEL', () => {
+    // THE WHOLE TREE, and it now IS the whole tree. Two of the four stale
+    // sentences were in screens — `WalkoutView.tsx` and `CloseOutView.tsx` —
+    // because a caller describes what it triggers, and a scan rooted at the
+    // module would have left both standing. The walk this loop used to take was
+    // `src/`-and-`.ts(x)`-only, which left `App.tsx` and all twenty files of
+    // `tools/` unread under a name that said otherwise. See `everyProseFile`.
+    const files = everyProseFile();
+    expect(files.length, 'git answered almost nothing — the instrument is broken').toBeGreaterThan(
+      50,
+    );
+    // The three shapes the old walk could not reach, by name.
+    expect(files, 'the walk skipped the tests it is supposed to read').toContain(
+      'src/cutin/cutInArt.test.ts',
+    );
+    expect(files, 'the walk cannot see the repository root').toContain('App.tsx');
+    expect(files, 'the walk cannot see a `.mjs`').toContain('tools/capture-cutin.mjs');
+    for (const file of files) {
+      expect(
+        panelClaimsIn(file),
+        `${file} still tells its reader the cut-in's picture is the licensing panel. ` +
+          'GDD §7.2: "The cut-in composes its own frame; it does not mount the shop panel — ' +
+          'RULED." Say what it does instead, or say what it USED TO do.',
+      ).toEqual([]);
+    }
+  });
+
+  it('AND EVERY ONE OF THOSE FILES REALLY YIELDED PROSE TO READ', () => {
+    // The vacuity the loop above cannot see by itself. It ran over ~190 files
+    // and only THREE of them are proved anywhere in this file to produce a
+    // non-empty `prose()`; a regression that returned '' for some other file
+    // shape — a `.mjs` with a shebang, a file whose only comments are `//`,
+    // a lexer that lost track inside a template literal — would sail through
+    // the other ~187 with nothing to say and look exactly like a clean tree.
+    //
+    // DERIVED, NOT A THRESHOLD. `onlyComments` is the lexer and `prose` is only
+    // its decoration-stripper, so the two must agree file by file: if the lexer
+    // found a word inside a comment, the stripper has to still have one. That is
+    // an IFF over every file, with no number in it to tune.
+    const files = everyProseFile();
+    let withProse = 0;
+    for (const file of files) {
+      const raw = readFileSync(path.join(REPO_ROOT, file), 'utf8');
+      const lexed = /\w/.test(onlyComments(raw));
+      const read = /\w/.test(proseOf(file));
+      expect(read, `${file}: onlyComments found ${lexed ? 'a comment' : 'none'}, prose() ${read ? 'did' : 'did not'}`).toBe(
+        lexed,
+      );
+      if (read) withProse += 1;
+    }
+    // ...and the iff is not satisfied by both sides being empty everywhere.
+    expect(withProse, 'no file in the tree has a comment — the lexer is broken').toBeGreaterThan(
+      files.length / 2,
+    );
+  });
+
+  it('AND IT IS CLEAN FOR A REASON, NOT BECAUSE THE PROSE WENT QUIET', () => {
+    // The failure mode the check above cannot see by itself: a module that
+    // deleted every mention of the panel would pass it and would also have
+    // thrown away the explanation. So the history has to still be there, in the
+    // two files that carry it, while the claim scan reads zero.
+    for (const file of ['src/cutin/cutInArt.ts', 'src/cutin/cutInTuning.ts']) {
+      const text = proseOf(file);
+      expect(text, `${file} no longer explains what it does not mount`).toMatch(/renderPanel/);
+      expect(text, `${file} no longer names the failure it fixed`).toMatch(/§7\.3/);
+      expect(panelClaimsIn(file), file).toEqual([]);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE EVIDENCE THE HEADER CITES IS REALLY IN THE REPOSITORY
+// ---------------------------------------------------------------------------
+
+describe('`CutInView.tsx` cites pictures that a fresh checkout really has', () => {
+  /**
+   * The loop this closes. `.gitignore` carries a negation for
+   * `.gauntlet/shots/cutin/` whose comment gives `CutInView.tsx` as the reason —
+   * "the sentence that was false until the pictures were committed" — and for
+   * two rounds that header went on saying the pixels were NOT in the repo. One
+   * side of the loop was closed and the other was left open, with nothing that
+   * could notice.
+   *
+   * ASKED OF GIT, NOT OF THE DISK. This check used `existsSync`, which is TRUE
+   * FOR A FILE GIT DOES NOT TRACK — so re-running `tools/capture-cutin.mjs`
+   * locally recreated every path this test names, and `git rm --cached` on the
+   * whole directory (or re-adding the `.gitignore` line the negation undoes)
+   * would have left it green on the machine that captured them and false for
+   * every other reader. The header's claim is about a FRESH CHECKOUT, and the
+   * only instrument that can answer that question is the index.
+   * `tools/evidence.mjs` learned the same lesson from the other side, where an
+   * empty list of tracked shot records was a pass.
+   */
+  const SHOTS_DIR = '.gauntlet/shots/cutin';
+
+  it('THE PIXELS ARE TRACKED, not merely present on this disk', () => {
+    const tracked = trackedUnder(SHOTS_DIR);
+    // Non-vacuity for the instrument itself: `git ls-files` on a path that does
+    // not exist returns nothing, and nothing has no problems in it.
+    expect(
+      trackedUnder('src/cutin').includes('src/cutin/CutInView.tsx'),
+      'git ls-files answered nothing for a file that is certainly tracked — the instrument is broken, not the evidence',
+    ).toBe(true);
+
+    expect(
+      tracked,
+      `${SHOTS_DIR}/frames.json is not tracked — see .gitignore and CutInView.tsx`,
+    ).toContain(`${SHOTS_DIR}/frames.json`);
+    const pngs = tracked.filter((name) => name.endsWith('.png'));
+    expect(pngs.length, `the header says ten committed PNGs, git tracks ${pngs.length}`).toBe(10);
+    // And they are really on disk too, which is a different claim from being in
+    // the index and is the half `existsSync` was right about.
+    for (const rel of [...pngs, `${SHOTS_DIR}/frames.json`]) {
+      expect(existsSync(path.join(REPO_ROOT, rel)), `${rel} is tracked but missing`).toBe(true);
+    }
+  });
+
+  it('and the header names it, and the instrument that writes it', () => {
+    // The other direction: pictures with nothing pointing at them are evidence
+    // nobody finds. Both halves have to hold for the sentence to be true.
+    const header = prose('cutin/CutInView.tsx');
+    expect(header).toMatch(/\.gauntlet\/shots\/cutin\//);
+    expect(header).toMatch(/tools\/capture-cutin\.mjs/);
+    // The INSTRUMENT is held to the same standard as the pictures: a capture
+    // script nobody else has is not a way for a reader to re-take the shots.
+    expect(trackedUnder('tools/capture-cutin.mjs')).toEqual(['tools/capture-cutin.mjs']);
+    // And it must not have drifted back to denying they are here.
+    expect(header, 'the header denies pixels that are committed').not.toMatch(
+      /THE PIXELS ARE NOT IN THE REPO/,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SKIPPABILITY, at the view layer — GDD §7.2
+// ---------------------------------------------------------------------------
+
+describe('the cut-in is dismissed by tapping it — GDD §7.2', () => {
+  it('THE PRESS HANDLER IS THE DISMISS HANDLER', () => {
+    // The mutation this exists to catch is `onPress={() => {}}`, which type-
+    // checks, renders identically, and makes the cut-in un-skippable.
+    expect(VIEW).toMatch(/onPress=\{onDismiss\}/);
+    // ...and there is no second, conditional press handler that could shadow it.
+    expect(VIEW).not.toMatch(/onPress=\{\(\)\s*=>\s*\{\s*\}\}/);
+    expect(VIEW).not.toMatch(/onPress=\{[^}]*\?[^}]*:[^}]*\}/);
+  });
+
+  it('THE WHOLE SCREEN IS THE TARGET, not a button in a corner', () => {
+    expect(VIEW).toMatch(/<Pressable/);
+    expect(VIEW).toMatch(/StyleSheet\.absoluteFill/);
+  });
+
+  it('says it is skippable, because a player has to know', () => {
+    expect(VIEW).toMatch(/SKIP_HINT/);
+    expect(VIEW).toMatch(/cut-in-skip-hint/);
+  });
+
+  it('the host really calls the gate’s dismiss, not just setLive(null)', () => {
+    // `setLive(null)` alone would take the picture off screen and leave the
+    // gate session holding a live cut-in for ever, which is a different bug
+    // wearing the same appearance.
+    expect(HOST).toMatch(/dismissCutIn\(session\.current\)/);
+    expect(HOST).toMatch(/cutInAutoDismissMs\(\)/);
+  });
+
+  it('THE TAP GOES THROUGH THE WINDOW AND THE TIMER DOES NOT', () => {
+    // The defect this catches, which shipped for two rounds:
+    // `CUT_IN_TUNING.DISMISS_ENABLED_AFTER_MS` was registered, documented,
+    // pinned by a unit test, and named in `cutInTuning.ts` as "the line to
+    // move" — while the only reader of it was `canDismissAt`, which nothing
+    // outside `cutInGate.test.ts` called. `onPress` went straight to an ungated
+    // `dismiss`. Setting the constant to 300 turned two unit tests red and left
+    // the app's behaviour untouched. Same shape as the `SCRIM_OPACITY` defect
+    // one round earlier: a tunable that reached no pixel.
+    //
+    // The view still hands its press straight to `onDismiss` (above); what
+    // changed is which callback the host puts there.
+    expect(HOST).toMatch(/tapDismissCutIn\(session\.current, Date\.now\(\) - shownAt\.current\)/);
+    expect(HOST).toMatch(/onDismiss=\{dismissByTap\}/);
+    // ...and the AUTO-dismiss keeps the ungated route. A timer routed through
+    // the tap window would strand a cut-in on screen for ever the day somebody
+    // set a window longer than `HOLD_MS`.
+    expect(HOST).toMatch(/setTimeout\(dismiss, cutInAutoDismissMs\(\)\)/);
+    expect(HOST).not.toMatch(/setTimeout\(dismissByTap/);
+    // The clock is the host's, not the gate's: `cutInGate.ts` is pure.
+    expect(HOST).toMatch(/shownAt\.current = Date\.now\(\)/);
+    expect(code('cutin/cutInGate.ts'), 'the gate started reading a clock').not.toMatch(
+      /Date\.now\(\)/,
+    );
+  });
+
+  it('THE SCRIM IS ITS OWN LAYER, so its opacity is not overridden by the arrival', () => {
+    // The defect this catches, which shipped: `styles.root` carried both the
+    // backdrop AND `opacity: L.SCRIM_OPACITY`, and the arrival animation's
+    // `{ opacity: arrived.value }` was applied after it on the same node — so
+    // once the enter timing completed the overlay sat at opacity 1 and the
+    // registered, documented tunable reached no pixel at all.
+    //
+    // The pixel proof is `tools/capture-cutin.mjs`, which measures blended
+    // pixels behind the overlay on real frames. This is the cheap statement of
+    // the same thing: the two must not be on one node.
+    expect(VIEW).toMatch(/SCRIM_OPACITY/);
+    expect(VIEW).toMatch(/scrim: \{/);
+    expect(VIEW).toMatch(/StyleSheet\.absoluteFill, styles\.scrim/);
+    const root = /root: \{[^}]*\}/.exec(VIEW)?.[0] ?? '';
+    expect(root.length).toBeGreaterThan(0);
+    expect(root, 'the arrival node still carries a static opacity').not.toMatch(/opacity/);
+    expect(root, 'the arrival node still carries the backdrop').not.toMatch(/backgroundColor/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE CAP LIVES IN THE GATE, AND NO SCREEN CAN GET ROUND IT
+// ---------------------------------------------------------------------------
+
+describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
+  it('THE SET OF FILES THAT TALK TO THE GATE IS THIS SET — derived, not restated', { timeout: budgetFrom(17_784) }, () => {
+    // WHY THIS EXISTS. `CALLERS` is a hand-written list of five paths and every
+    // other scan in this file reads only those five. Nothing asserted that the
+    // list was COMPLETE, so:
+    //
+    //   - a sixth screen offering two beat kinds at once would leave "THE
+    //     PRIORITY ORDER DECIDES NOTHING TODAY" green while GDD §7.2's ruled
+    //     claim went false, and
+    //   - a sixth screen calling `openCutInSession` directly would mint itself a
+    //     second slot inside one sitting with no test red at all — which is
+    //     §12.3's refusal condition, reached by a route no scan was looking at.
+    //
+    // DERIVED FROM THE TYPE CHECKER, not from the spelling. The first version of
+    // this check walked `src/` for the six names as TEXT, and its residual said
+    // an aliased import still spells the original name somewhere. That is true
+    // of a direct import and false of a re-export placed INSIDE `src/cutin/`,
+    // which is the one directory the walk skips: one line there turns
+    // `useOfferCutIn` into `offerBeat`, and a screen importing `offerBeat`
+    // matched nothing. See `THE_GATE_ITSELF` for the reproduction.
+    const claimants = filesTalkingToTheGate();
+    const scanned = gateScan().scanned;
+    expect(scanned.length, 'the program compiled almost nothing').toBeGreaterThan(50);
+    expect(scanned, 'the root set does not reach outside src/').toContain('App.tsx');
+    expect(claimants.length, 'nothing in the tree talks to the gate at all').toBeGreaterThan(0);
+    expect(claimants).toEqual([...CALLERS.map(([, file]) => `src/${file}`)].sort());
+
+    // THE TEXT SCAN IS KEPT AS A CROSS-CHECK, one way round. Every file that
+    // NAMES an entry point must be in the derived set; the derived set may be
+    // larger, and the whole point of this round is that it can be.
+    for (const rel of filesNaming(GATE_ENTRY_POINTS)) {
+      expect(claimants, `${rel} names the gate and the symbol scan missed it`).toContain(
+        `src/${rel}`,
+      );
+    }
+  });
+
+  it('AND THE SET OF SCREENS THAT CLAIM A SITTING IS THE TWO LOOPS', () => {
+    // The other half of the same hole. The cap is per SITTING (§7.2), and a
+    // sitting is whatever a caller names with `cutInSessionId` and mounts a
+    // `CutInHost` over. A third screen doing that inside an existing sitting
+    // would hand it a second cut-in without ever touching `CALLERS` — so the
+    // set of files that can open one is derived too, not listed in a loop.
+    //
+    // DERIVED FROM THE TYPE CHECKER, not from a JSX spelling. See
+    // `SITTING_BINDINGS`: the old text scan for `<CutInHost` was blind to an
+    // aliased import, which is §12.3's refusal condition reached by a rename.
+    //
+    // The paths are REPOSITORY-relative here — `src/meet/MeetScreen.tsx`, not
+    // `meet/MeetScreen.tsx` — because the enumeration is over the project's own
+    // file list and that list reaches outside `src/`.
+    const claimants = filesClaimingASitting();
+    // Non-vacuity, three ways: the program really compiled the project, it
+    // really reached a file outside `src/`, and the pattern really matches
+    // something. Without the last, `[] === []` would pass for ever.
+    const scanned = sittingScan().scanned;
+    expect(scanned.length, 'the program compiled almost nothing').toBeGreaterThan(50);
+    expect(scanned, 'the root set does not reach outside src/').toContain('App.tsx');
+    expect(claimants.length, 'nothing in the tree claims a sitting at all').toBeGreaterThan(0);
+    expect(claimants).toEqual([...HOST_SCREENS.map((file) => `src/${file}`)].sort());
+  });
+
+  it('the host is the only file that opens a session or requests a cut-in', () => {
+    // COUNTS, NOT PRESENCE, on both halves of the sentence. `toMatch` here was
+    // satisfied by three witnesses for the first name and two for the second, so
+    // it said "somebody in this file mentions the ledger" and not "the host is
+    // the file that reaches it". See `HOST_SITES`.
+    expect(
+      occurrences(HOST, /\bresumeCutInSession\b/),
+      'CutInHost.tsx does not reach the ledger the expected number of times',
+    ).toBe(HOST_SITES.RESUME_TOTAL);
+    expect(
+      occurrences(HOST, /\brequestCutIn\b/),
+      'CutInHost.tsx does not reach the gate the expected number of times',
+    ).toBe(HOST_SITES.REQUEST_TOTAL);
+    // ...and the one that is a CALL is the one inside `offer`. Every beat this
+    // app offers goes through that line; a second call site would be a second
+    // route to a slot, which is §12.3's refusal condition.
+    expect(
+      occurrences(HOST, /const decision = requestCutIn\(asked, beats\);/),
+      'the single call into the gate is not there exactly once',
+    ).toBe(HOST_SITES.REQUEST_AT_THE_OFFER);
+    for (const [moment, file] of CALLERS) {
+      const text = code(file);
+      // A screen that could call these could give itself a second slot, and
+      // §12.3's refusal condition would then be a convention rather than a rule.
+      expect(text, `${moment} (${file})`).not.toMatch(/\bopenCutInSession\b/);
+      expect(text, `${moment} (${file})`).not.toMatch(/\brequestCutIn\b/);
+      expect(text, `${moment} (${file})`).not.toMatch(/\bCUT_IN_TUNING\b/);
+      expect(text, `${moment} (${file})`).not.toMatch(/\bCutInView\b/);
+      // ...nor reach the ledger, which is where the count lives now. A screen
+      // that could forget a sitting could refund its slot.
+      //
+      // THESE STAY `not.toMatch`, AND THAT IS A RULING RATHER THAN AN OVERSIGHT.
+      // The pins above became counts because "at least one witness" is weaker
+      // than it reads. A NEGATIVE is the other end of the same scale: it is the
+      // count zero, asserted over every occurrence at once, so a second witness
+      // makes it MORE likely to fire rather than less. There is nothing to
+      // strengthen here, and rewriting them as `occurrences(...) === 0` would
+      // say the same thing in more characters.
+      expect(text, `${moment} (${file})`).not.toMatch(/\bresumeCutInSession\b/);
+      expect(text, `${moment} (${file})`).not.toMatch(/\brememberCutInSession\b/);
+      expect(text, `${moment} (${file})`).not.toMatch(/\bforgetAllCutInSessions\b/);
+      // ...nor the observer. A screen that could erase what the gate answered
+      // could erase the evidence that it was refused, and that record is what
+      // `tools/verify-cutin-cap.mjs` now reads instead of counting pixels.
+      expect(text, `${moment} (${file})`).not.toMatch(/\bobserveCutInDecision\b/);
+      expect(text, `${moment} (${file})`).not.toMatch(/\bforgetCutInObservations\b/);
+    }
+  });
+
+  it('ONE GATE SESSION PER SITTING, GUARDED ON ITS ID [a-remount-resumes-rather-than-opens]', () => {
+    // The one hole `cutInGate.ts` §5 names: a caller that re-opens mid-sitting
+    // hands itself a second slot — or, as this file actually did before a
+    // browser caught it, throws away a cut-in that had just been granted,
+    // because React runs child effects before parent ones.
+    //
+    // The GUARD is what closes both, not the dependency list, so the guard is
+    // what this reads.
+    expect(
+      occurrences(HOST, /if \(session\.current\.sessionId === activeSessionId\) return;/),
+      'the id guard above the re-open is not there exactly once',
+    ).toBe(HOST_SITES.SESSION_ID_GUARD);
+
+    // THE TWO RESUME SITES, PINNED SEPARATELY, and this is the finding this
+    // test was sent back for. The byte-exact regex below — argument object and
+    // all — matched TWICE, because `CutInHost.tsx` resumes in the `useRef`
+    // initialiser AND in the effect with the identical argument. So the mutant
+    // that deletes either one left this line green off the survivor, and the
+    // pin that read hardest was the one that could not fail.
+    //
+    // Each site is now matched by the code AROUND it, which is what makes the
+    // two distinguishable at all, and each is pinned at exactly 1.
+    expect(
+      occurrences(
+        HOST,
+        /React\.useRef<CutInSessionState>\(\s*resumeCutInSession\(\{ sessionId: activeSessionId, seed: activeSeed \}\),\s*\)/,
+      ),
+      'the mount does not resume the sitting it is already in — a re-mount inside one sitting would get a fresh slot',
+    ).toBe(HOST_SITES.RESUME_AT_THE_REF);
+    expect(
+      occurrences(
+        HOST,
+        /session\.current = resumeCutInSession\(\{ sessionId: activeSessionId, seed: activeSeed \}\);/,
+      ),
+      'a NEW sitting id does not open a new gate session — the second sitting would inherit the first’s spent slot',
+    ).toBe(HOST_SITES.RESUME_IN_THE_EFFECT);
+
+    // ...and the count is never touched anywhere else.
+    expect(HOST).not.toMatch(/firedCount/);
+  });
+
+  it('THE COUNT OUTLIVES THE COMPONENT — the cap is per sitting, not per mount', () => {
+    // A `useRef` is about a MOUNT and §12.3's refusal condition is about a
+    // SESSION. `AppShell.tsx` swaps the two screens with a ternary and both
+    // screens early-return above their own `<CutInHost>`, so the component
+    // really does go away inside a sitting.
+    //
+    // THE BEHAVIOUR IS TESTED FOR REAL IN `cutInLedger.test.ts` — this only
+    // checks that the host is the thing wired to it, which is the half a node
+    // environment cannot execute.
+    //
+    // COUNTS HERE TOO, AND THE REASON IS THIS TEST'S POSITION RATHER THAN ITS
+    // CONTENT. It is the branch directly beneath the one above, which is where
+    // this codebase's guard defects keep turning up: two neighbouring tests read
+    // as one decision, get written as two, and the second is written while the
+    // first still feels solved. Each of these three has exactly one witness
+    // TODAY, so a presence pin happens to bite — but nothing said so, and
+    // "happens to" is what the resume pin above was, twenty lines up, for a
+    // round. The count is the thing that keeps it true when a second call site
+    // arrives.
+    expect(
+      occurrences(HOST, /from '\.\/cutInLedger'/),
+      'the host does not import the ledger exactly once',
+    ).toBe(HOST_SITES.LEDGER_IMPORT);
+    expect(
+      occurrences(HOST, /\brememberCutInSession\b/),
+      'CutInHost.tsx writes the ledger a different number of times than this file expects',
+    ).toBe(HOST_SITES.REMEMBER_TOTAL);
+    expect(
+      occurrences(HOST, /rememberCutInSession\(decision\.state\);/),
+      'the write-back after EVERY decision is gone, so a spent slot stops being remembered as spent',
+    ).toBe(HOST_SITES.REMEMBER_AFTER_A_DECISION);
+    expect(
+      occurrences(HOST, /rememberCutInSession\(session\.current\);/),
+      'the write-back on the auto-dismiss route is gone',
+    ).toBe(HOST_SITES.REMEMBER_AFTER_A_DISMISS);
+    expect(
+      occurrences(HOST, /rememberCutInSession\(next\);/),
+      'the write-back on the tap route is gone',
+    ).toBe(HOST_SITES.REMEMBER_AFTER_A_TAP);
+    // The ledger is not cleared by anything that renders. A component that
+    // could forget a sitting could hand it a second slot.
+    expect(HOST).not.toMatch(/forgetAllCutInSessions/);
+    expect(VIEW).not.toMatch(/cutInLedger/);
+  });
+
+  it('EVERY DECISION IS OBSERVED — the host quotes the gate on refusals too', () => {
+    // The browser tool counts OVERLAYS, and a refusal and an offer nobody made
+    // are the same picture. `cutInObserver.ts` is what tells them apart, and it
+    // only tells them apart if the host calls it on EVERY decision rather than
+    // inside the `fire` branch.
+    //
+    // The `fire` branch is `if (decision.outcome.kind === 'fire')`, so the
+    // assertion is that the observe call comes BEFORE it in the source — a call
+    // underneath that line is a call only fires reach, which would leave the
+    // record with no refusals in it and the tool unable to see the thing it was
+    // built to see.
+    //
+    // BOTH ENDPOINTS ARE PINNED AT ONE FIRST, and that is not decoration: the
+    // ordering below is read with `indexOf`, which answers about the FIRST
+    // occurrence. A second observe call added inside the fire branch would leave
+    // `observedAt` pointing at the one above it and this comparison green, while
+    // fires got logged twice and the record the browser tool reads went wrong.
+    // Same defect as the resume pin two tests up, wearing an index instead of a
+    // regex.
+    expect(
+      occurrences(HOST, /observeCutInDecision\(asked, beats, decision\)/),
+      'the observe call is not there exactly once, so the ordering check below is reading one of several',
+    ).toBe(HOST_SITES.OBSERVE_AT_THE_OFFER);
+    expect(
+      occurrences(HOST, /decision\.outcome\.kind === 'fire'/),
+      'the fire branch is not there exactly once, so the ordering check below is reading one of several',
+    ).toBe(HOST_SITES.FIRE_BRANCH);
+    const observedAt = HOST.indexOf('observeCutInDecision(asked, beats, decision)');
+    const fireBranchAt = HOST.indexOf("decision.outcome.kind === 'fire'");
+    expect(observedAt, 'the host does not observe its decisions').toBeGreaterThan(-1);
+    expect(fireBranchAt, 'the fire branch moved and this check is reading nothing').toBeGreaterThan(
+      -1,
+    );
+    expect(observedAt, 'the observe call sits inside the fire branch').toBeLessThan(fireBranchAt);
+    // ...and it is handed the state the gate was ASKED with, not the one it
+    // handed back. `firedCountBefore === firedCountAfter` is the log's signature
+    // of a refusal and it collapses if both sides are the same object.
+    expect(HOST).toMatch(/const asked = session\.current;/);
+    expect(HOST).toMatch(/requestCutIn\(asked, beats\)/);
+  });
+
+  it('THE DEBUG ROUTE IS NOT REACHABLE IN PLAY', () => {
+    // `?cutin=<moment>` stages one cut-in for the capture harness. It is a
+    // query string and nothing else: no control navigates to it, and the parser
+    // returns null for anything it does not recognise (`cutInPreview.test.ts`).
+    expect(HOST).toMatch(/cutInPreviewFrom/);
+    expect(HOST).toMatch(/window\.location\.search/);
+    // The preview's beats go through the same `offer`, so the cap, the rate and
+    // the qualification all still apply. A preview that called `setLive`
+    // directly would be photographing a component the app cannot reach.
+    expect(HOST).toMatch(/offer\(preview\.beats\)/);
+    expect(HOST).not.toMatch(/setLive\(preview/);
+    // No screen may reach the route either.
+    for (const [moment, file] of CALLERS) {
+      expect(code(file), `${moment} (${file})`).not.toMatch(/cutInPreview/);
+    }
+  });
+
+  it('both loops mount exactly one host, above the whole loop', () => {
+    for (const file of ['session/SessionScreen.tsx', 'meet/MeetScreen.tsx']) {
+      const text = code(file);
+      expect(text, file).toMatch(/<CutInHost/);
+      expect(text, file).toMatch(/<\/CutInHost>/);
+      expect(text.match(/<CutInHost/g)?.length, `${file} mounts one host`).toBe(1);
+      expect(text, file).toMatch(/cutInSessionId\(/);
+      expect(text, file).toMatch(/cutInSessionSeed\(/);
+    }
+  });
+
+  it('A MEET IS ONE SESSION, AND A TRAINING DAY IS ANOTHER', () => {
+    // GDD §7.2 as read in `cutInGate.ts` §3, at the two call sites. The meet's
+    // host is above the phase router, so all nine attempts, the recap and the
+    // bomb-out share one slot.
+    expect(code('meet/MeetScreen.tsx')).toMatch(/cutInSessionId\('meet'/);
+    expect(code('session/SessionScreen.tsx')).toMatch(/cutInSessionId\('training'/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ALL FOUR MOMENTS HAVE A CALLER
+// ---------------------------------------------------------------------------
+
+describe('every firing moment of GDD §7.2 is wired to a screen', () => {
+  it('EACH OF THE FOUR IS OFFERED BY THE SCREEN THAT KNOWS ABOUT IT', () => {
+    expect(CALLERS.length).toBe(5); // four moments; PRs have two screens
+    for (const [moment, file, beat] of CALLERS) {
+      const text = code(file);
+      expect(text, `${moment} (${file}) offers nothing`).toMatch(/useOfferCutIn\(/);
+      expect(text, `${moment} (${file}) reports the wrong beat`).toContain(beat);
+    }
+  });
+
+  it('covers all four of the gate’s beat kinds between them', () => {
+    // The union of what the app can report. A beat kind the gate understands
+    // but no screen sends is a firing moment that exists only in the tests.
+    //
+    // PINNED AS A SET, not walked with `has`. The loop this replaced could see
+    // a kind that LEFT and never one that arrived.
+    //
+    // SCOPED TO THE ARGUMENT OF `useOfferCutIn`, which the loop was not: a bare
+    // `/kind: '…'/` over the whole file also matches `playBeat({ kind:
+    // 'walkout-call' })` and `{ kind: 'bar-plate' }`, which are the SOUND
+    // scheduler's beats and have nothing to do with the gate. That is why the
+    // old shape could only ever be a membership test — its input was full of
+    // things that were never going to be in the answer.
+    const offered = beatKindsOffered();
+    expect(offered.kinds, 'the useOfferCutIn scan matched nothing at all').not.toEqual([]);
+    // JOINED, NOT COMPARED AS ARRAYS. `expected [ … (1) ] to deeply equal
+    // [ … (2) ]` is the shape CLAUDE.md calls half a check: it goes red and
+    // says nothing about WHICH kind arrived or left.
+    expect(
+      offered.kinds.join(', '),
+      `offered by ${offered.perFile.map(([file, args]) => `${file}(${args.length})`).join(', ')}`,
+    ).toBe('meet-over, meet-walkout, record, work-set');
+    // Non-vacuity on the scoping itself: every one of the five call sites must
+    // have contributed, or the set above is a smaller claim than it looks.
+    expect(offered.perFile.map(([file]) => file).sort().join(', ')).toBe(
+      [...CALLERS.map(([, file]) => file)].sort().join(', '),
+    );
+  });
+
+  it('AND THE THIRD PR SUB-MOMENT IS REACHED BY NO SCREEN — record: ‘tier’ is unbuilt [tier-pr-is-reached-by-no-screen]', () => {
+    // ===================================================================
+    // THE HOLE THE TEST ABOVE COULD NOT SEE, WRITTEN DOWN AS A CHECK
+    // ===================================================================
+    // GDD §7.2 names THREE PR sub-moments — "new e1RM, new total, qualifying
+    // for a higher tier" — and `CUT_IN_RECORD_KINDS` carries all three. The
+    // gate fires on all three and `cutInGate.test.ts`'s "fires on each of the
+    // three PR kinds" proves it.
+    //
+    // NO SCREEN IN THE APP CAN OFFER THE THIRD. `RecapView` sends `total` and
+    // `e1rm`; `CloseOutView` sends `e1rm`. Nothing sends `tier`, because tier
+    // qualification depends on GDD §6.1's Career calendar, which a human has
+    // explicitly deferred. So the gate's third PR kind is reachable only from
+    // a test, and until this check that was disclosed nowhere: the test above
+    // iterates `kind:` and is satisfied by ANY `record` beat, so it passed
+    // whichever of the three sub-kinds the app happened to send.
+    //
+    // THIS IS A DISCLOSURE, NOT A FEATURE REQUEST. Every other residual in
+    // this piece is written down at length — the cross-lift bomb-out
+    // starvation, the reload hole, the coach-beats-PR ordering cost — and this
+    // one's silence was the anomaly. It goes red in both directions: the day a
+    // screen starts offering `tier`, somebody deletes this test and the
+    // paragraph in `cutInGate.ts` §5 that says the same thing; the day a screen
+    // stops offering `total` or `e1rm`, a real PR beat has gone missing.
+    const recordKinds = beatKindsOffered().recordKinds;
+    // Non-vacuity first: the scan really matches something, so `.not.toContain`
+    // below is not being asked of an empty list.
+    expect(recordKinds.length, 'no screen reports a record sub-kind at all').toBeGreaterThan(0);
+    expect(
+      recordKinds.join(', '),
+      "if 'tier' has arrived here, a screen has learnt to report tier qualification — delete this " +
+        'test and the paragraphs it points at in cutInGate.ts §5 and RecapView.tsx',
+    ).toBe('e1rm, total');
+    expect(recordKinds).not.toContain('tier');
+    // ...and the gate does permit the third, spelled out here rather than read
+    // off `CUT_IN_RECORD_KINDS`, so this stays a statement about the GAP
+    // between §7.2's list and the app rather than a tautology.
+    expect(code('cutin/cutInGate.ts')).toMatch(/CUT_IN_RECORD_KINDS = \['e1rm', 'total', 'tier'\]/);
+  });
+
+  it('no screen qualifies the beat itself — it reports facts', () => {
+    // The walk-out reports which attempt it is; it does not check for a third
+    // and offer nothing otherwise. If it did, "the gate does not fire on a
+    // non-qualifying beat" would be a property of five screens instead of one
+    // module, and `cutInGate.test.ts` could not see any of them.
+    expect(code('meet/WalkoutView.tsx')).toMatch(/attemptNumber: attempt\.attemptNumber/);
+    expect(code('session/CloseOutView.tsx')).toMatch(/achieved: isPr/);
+    expect(code('meet/RecapView.tsx')).toMatch(/achieved: recap\.isTotalPr/);
+    expect(code('session/RestView.tsx')).toMatch(/loadRatio,/);
+  });
+
+  it('THE WALK-OUT REPORTS WHETHER ITS LIFT CAN STILL BOMB', () => {
+    // The fact that stops a third attempt with nothing banked spending the slot
+    // §7.2's "somber counterpart" is about to need. It is REPORTED, not acted
+    // on: the screen must not check it and withhold the beat, or the rule would
+    // move out of the gate and `cutInGate.test.ts` could not see it.
+    const walkout = code('meet/WalkoutView.tsx');
+    expect(walkout).toMatch(/bombRisk: attempt\.bombRisk/);
+    // The shapes that would move the decision into the screen.
+    expect(walkout).not.toMatch(/attempt\.bombRisk \?\s*\[\]/);
+    expect(walkout).not.toMatch(/useOfferCutIn\(attempt\.bombRisk/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE PRIORITY ORDER, AND THE READING THAT SAYS IT DECIDES NOTHING
+// ---------------------------------------------------------------------------
+
+describe('CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break', () => {
+  /**
+   * The text of EVERY `useOfferCutIn(...)` call in a file, parentheses balanced.
+   *
+   * Read off the real source rather than restated, because the claim being
+   * checked is about what the CALL SITES can produce and a restatement would
+   * agree with itself for ever.
+   *
+   * ALL OF THEM, not the first. This used to stop at `indexOf`, so a screen that
+   * grew a second `useOfferCutIn` offering two kinds at once kept the assertion
+   * below green on the strength of its first call — the same class of blind spot
+   * as the five-file `CALLERS` list, one scope in.
+   */
+  function offerCalls(text: string, names: readonly string[] = ['useOfferCutIn']): readonly string[] {
+    const calls: { readonly at: number; readonly text: string }[] = [];
+    for (const name of names) {
+      const marker = `${name}(`;
+      let from = 0;
+      for (;;) {
+        const start = text.indexOf(marker, from);
+        if (start === -1) break;
+        let depth = 0;
+        let end = -1;
+        for (let i = start + marker.length - 1; i < text.length; i += 1) {
+          if (text[i] === '(') depth += 1;
+          else if (text[i] === ')') {
+            depth -= 1;
+            if (depth === 0) {
+              end = i;
+              break;
+            }
+          }
+        }
+        if (end === -1) break;
+        calls.push({ at: start, text: text.slice(start, end + 1) });
+        from = end + 1;
+      }
+    }
+    return calls.sort((a, b) => a.at - b.at).map((call) => call.text);
+  }
+
+  /**
+   * TEXT IN, CALLS OUT — deliberately, so the positive control below can feed
+   * the SAME function a two-call string. A reader that only ever took a path
+   * could not be shown to find a second call without planting a second call in
+   * the tree.
+   *
+   * THE NAMES COME FROM THE TYPE CHECKER, not from the string `useOfferCutIn`.
+   * A screen importing the hook under another name — which a re-export inside
+   * `src/cutin/` can arrange in one line — spells nothing this reader would find
+   * on the old marker, so its two-kind call would have read as NO call at all.
+   */
+  function offerCallsIn(repoRel: string): readonly string[] {
+    const names = offerScan().localNames.get(repoRel) ?? ['useOfferCutIn'];
+    return offerCalls(code(repoRel.replace(/^src\//, '')), names);
+  }
+
+  function beatKindsPerCall(repoRel: string): readonly (readonly string[])[] {
+    return offerCallsIn(repoRel).map((call) => [
+      ...new Set([...call.matchAll(/kind: '([a-z-]+)'/g)].map((m) => m[1] ?? '')),
+    ]);
+  }
+
+  it('the reader can see a two-kind call when there is one, and sees every call', () => {
+    // Positive control. A scan that had stopped matching would report every
+    // file as single-kind and the assertion below would pass on anything.
+    const twoKinds = "useOfferCutIn([{ kind: 'record' }, { kind: 'meet-over' }]);";
+    expect([...new Set([...twoKinds.matchAll(/kind: '([a-z-]+)'/g)].map((m) => m[1]))]).toEqual([
+      'record',
+      'meet-over',
+    ]);
+    // ...it really is reading the call, not the whole file...
+    expect(offerCallsIn('src/meet/RecapView.tsx')[0]).toMatch(/^useOfferCutIn\(/);
+    expect(offerCallsIn('src/meet/RecapView.tsx')[0]).not.toMatch(/ScrollView/);
+    expect(offerCallsIn('src/meet/RecapView.tsx').length).toBe(1);
+    // ...it finds a call made under a LAUNDERED NAME, which is the shape a
+    // re-export inside `src/cutin/` can hand a sixth screen in one line...
+    const laundered = "offerBeat([{ kind: 'record' }, { kind: 'meet-over' }]);";
+    expect(offerCalls(laundered), 'the reader is still hard-coded to one spelling').toEqual([]);
+    expect(offerCalls(laundered, ['offerBeat']).length).toBe(1);
+    // ...and it does not stop at the first one, which is what it used to do.
+    // The same balancing reader, given a text with two calls — the second of
+    // which is the two-kind shape the assertion below is hunting for.
+    const twice =
+      "useOfferCutIn([{ kind: 'record', achieved: f(1) }]);\nconst x = 1;\n" +
+      "useOfferCutIn([{ kind: 'meet-over' }, { kind: 'work-set' }]);";
+    const calls = offerCalls(twice);
+    expect(calls.length, 'the reader still stops at the first call').toBe(2);
+    expect([...new Set([...(calls[1] ?? '').matchAll(/kind: '([a-z-]+)'/g)].map((m) => m[1]))]).toEqual(
+      ['meet-over', 'work-set'],
+    );
+  });
+
+  it('THE PRIORITY ORDER DECIDES NOTHING TODAY, AND HERE IS THE READING THAT SAYS SO', () => {
+    // Each of the four beat KINDS maps to exactly one moment (`momentFor` is a
+    // switch on `kind`), so the number of distinct moments one request can
+    // produce is the number of distinct kinds at that call site. Every site
+    // offers one kind, so `momentsFor` returns at most one moment on every
+    // request the app can make and `CUT_IN_MOMENT_PRIORITY` never breaks a tie.
+    //
+    // THIS IS THE TEST THAT GOES RED THE DAY THAT STOPS BEING TRUE. When it
+    // does, the ranking starts deciding real beats and somebody should look at
+    // it on purpose rather than discover it — which is the whole reason the
+    // constant is kept rather than deleted.
+    //
+    // EVERY CALL IN EVERY FILE THAT TALKS TO THE GATE — and the file set is the
+    // SYMBOL-derived one, not `CALLERS` and not a text scan, so a sixth screen
+    // is inside this loop the day it is written rather than the day somebody
+    // remembers to add it, and a sixth screen that imported the hook under
+    // another name is inside it too.
+    const offering = filesTalkingToTheGate();
+    expect(offering.length, 'no file offers a beat at all').toBeGreaterThan(0);
+    for (const file of offering) {
+      const perCall = beatKindsPerCall(file);
+      expect(perCall.length, `${file} offers no beat`).toBeGreaterThan(0);
+      perCall.forEach((kinds, i) => {
+        expect(kinds.length, `${file} call ${i + 1} offers no beat`).toBeGreaterThan(0);
+        expect(
+          kinds.length,
+          `${file} call ${i + 1} now offers ${kinds.join(' + ')} at once — the priority ` +
+            'order has started deciding something. See CUT_IN_MOMENT_PRIORITY.',
+        ).toBe(1);
+      });
+    }
+  });
+
+  it('and the ranking is still declared, so the invariant has an implementation', () => {
+    // GDD §7.2 states the order in prose. Deleting the constant would leave the
+    // document with no implementation and make `momentsFor` return the caller's
+    // order instead of a defined one.
+    const GATE = source('cutin/cutInGate.ts');
+    expect(GATE).toMatch(/CUT_IN_MOMENT_PRIORITY/);
+    expect(GATE).toMatch(/CUT_IN_MOMENT_PRIORITY\.filter/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The three deferrals are gone
+// ---------------------------------------------------------------------------
+
+describe('the three "the gate belongs to somebody else" comments are gone', () => {
+  const DEFERRALS: readonly (readonly [string, RegExp])[] = [
+    ['meet/WalkoutView.tsx', /NO CUT-IN\./],
+    ['meet/RecapView.tsx', /NO CUT-IN FIRES HERE/],
+    ['session/CloseOutView.tsx', /NO CUT-IN FIRES HERE/],
+  ];
+
+  it('the scan can see the sentence it is looking for', () => {
+    expect('NO CUT-IN FIRES HERE. GDD §7.2 lists PR moments').toMatch(/NO CUT-IN FIRES HERE/);
+  });
+
+  it('replaced by wiring, not by a different comment', () => {
+    for (const [file, deferral] of DEFERRALS) {
+      const raw = source(file);
+      expect(raw, `${file} still defers`).not.toMatch(deferral);
+      expect(raw, `${file} still says the gate is somebody else's`).not.toMatch(
+        /gate belongs to/i,
+      );
+      expect(code(file), `${file} has no wiring`).toMatch(/useOfferCutIn\(/);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A cut-in is cosmetic — GDD §8.1, §12.3
+// ---------------------------------------------------------------------------
+
+describe('nothing in the cut-in path can touch a number the player earns', () => {
+  it('the view and the host read no progression, no total and no e1RM', () => {
+    for (const [name, text] of [
+      ['CutInView.tsx', VIEW],
+      ['CutInHost.tsx', HOST],
+    ] as const) {
+      for (const banned of [
+        'readTotalKg',
+        'readBestE1rmKg',
+        'proposeChange',
+        'ProgressionCache',
+        'applyMeetResult',
+        'recordTrainingSession',
+      ]) {
+        expect(text, `${name} names ${banned}`).not.toMatch(new RegExp(`\\b${banned}\\b`));
+      }
+    }
+  });
+
+  it('the cut-in path never reaches the fatigue ledger either — GDD §3.4, §12.3', () => {
+    for (const [name, text] of [
+      ['CutInView.tsx', VIEW],
+      ['CutInHost.tsx', HOST],
+    ] as const) {
+      expect(text, name).not.toMatch(/\bFatigueState\b/);
+      expect(text, name).not.toMatch(/\.fatigue\b/);
+    }
+  });
+});
