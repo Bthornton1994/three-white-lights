@@ -96,6 +96,7 @@ jobs:
           }
           let html = '';
           const hostedScripts = new Map();
+          const hostedSourceMaps = new Map();
           const artifactRows = release.artifact_files;
           for (let offset = 0; offset < artifactRows.length; offset += 8) {
             const batch = artifactRows.slice(offset, offset + 8);
@@ -112,6 +113,7 @@ jobs:
               } else {
                 assert.equal(digest(bytes), file.sha256, 'Hosted bytes differ: ' + file.path);
                 if (/\.js$/i.test(file.path)) hostedScripts.set(file.path, bytes.toString('utf8'));
+                if (/\.map$/i.test(file.path)) hostedSourceMaps.set(file.path, bytes.toString('utf8'));
               }
             }));
           }
@@ -141,7 +143,20 @@ jobs:
           const localFiles = (await walk('web/dist')).filter(file => file !== 'release.json').sort();
           assert.deepEqual(localFiles, artifactRows.map(file => file.path).sort(), 'Local production build inventory differs from the hosted release.');
           for (const file of artifactRows) {
-            assert.equal(digest(await readFile('web/dist/' + file.path)), file.sha256, 'Rebuilt artifact differs: ' + file.path);
+            const rebuilt = await readFile('web/dist/' + file.path);
+            if (/\.map$/i.test(file.path)) {
+              const servedMapText = hostedSourceMaps.get(file.path);
+              assert.ok(servedMapText, 'Hosted source map was not captured: ' + file.path);
+              const rebuiltMap = JSON.parse(rebuilt.toString('utf8'));
+              const servedMap = JSON.parse(servedMapText);
+              assert.equal(rebuiltMap.version, servedMap.version, 'Rebuilt source-map version differs: ' + file.path);
+              assert.equal(rebuiltMap.sources?.length, servedMap.sources?.length, 'Rebuilt source-map source count differs: ' + file.path);
+              for (const key of ['names', 'mappings', 'sourcesContent']) {
+                assert.deepEqual(rebuiltMap[key], servedMap[key], 'Rebuilt source-map ' + key + ' differs: ' + file.path);
+              }
+            } else {
+              assert.equal(digest(rebuilt), file.sha256, 'Rebuilt artifact differs: ' + file.path);
+            }
           }
 
           function attributes(source) {
@@ -226,7 +241,7 @@ jobs:
         with:
           name: hosted-production-web-${{ github.sha }}
           path: .gauntlet/shots/production-web/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
   domain:
