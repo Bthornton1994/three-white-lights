@@ -1,0 +1,43 @@
+{
+  "startedAt": "2026-09-30T21:55:23.014Z",
+  "checks": [
+    {
+      "name": "Equipment inspector recovers from missing plates to an already cached original bar texture",
+      "status": "passed"
+    },
+    {
+      "name": "Return to storage is initially visible and hit-tested above phone navigation at390x667",
+      "status": "passed",
+      "details": {
+        "x": 30,
+        "y": 527,
+        "width": 330,
+        "height": 44,
+        "navTop": 593,
+        "hit": true,
+        "scrollHeight": 667,
+        "viewport": 667
+      }
+    },
+    {
+      "name": "Whole footprint boundary and overlap refusals, then clear native placement acknowledgement",
+      "status": "passed"
+    }
+  ],
+  "pageErrors": [],
+  "limitations": [
+    "Four original final PNGs remain unavailable locally. This is a functional recovery and placement check, not complete art acceptance."
+  ],
+  "storageHit": {
+    "x": 30,
+    "y": 527,
+    "width": 330,
+    "height": 44,
+    "navTop": 593,
+    "hit": true,
+    "scrollHeight": 667,
+    "viewport": 667
+  },
+  "status": "functional-passed-art-incomplete",
+  "finishedAt": "2026-09-30T21:55:25.150Z"
+}

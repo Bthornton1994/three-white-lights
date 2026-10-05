@@ -1,0 +1,57 @@
+{
+  "observedAt": "2026-10-01T06:48:16.888Z",
+  "sourceHead": "5411ae9c04df57b0bf5cc2e5360a27346f669a79",
+  "versions": {
+    "nativeVitest": "4.1.11",
+    "webVitest": "4.1.11",
+    "nativeTypeScript": "6.0.3",
+    "webTypeScript": "6.0.3",
+    "vite": "8.2.1",
+    "pglite": "0.5.8",
+    "expoMetro": "56.0.2",
+    "metro": "0.84.6"
+  },
+  "browser": {
+    "executable": "/workspace/scratch/4fc55cb00998/tooling/browser-manual/chrome-headless-shell-linux64/chrome-headless-shell",
+    "actualVersion": "Google Chrome for Testing 151.0.7922.34",
+    "archiveVerification": {
+      "executable": "/workspace/scratch/4fc55cb00998/tooling/browser-manual/chrome-headless-shell-linux64/chrome-headless-shell",
+      "version": "151.0.7922.34",
+      "url": "https://storage.googleapis.com/chrome-for-testing-public/151.0.7922.34/linux64/chrome-headless-shell-linux64.zip",
+      "archiveMd5": "792047b3c2625d7d4b0fc7c4fc67d7ad"
+    }
+  },
+  "lockHashes": {
+    "native": "4962150d0e3443741eec4fdf589e92ee666ea1ff483bc8505435ad18ca694955",
+    "web": "c5e4314c444787500e64a4ab003c45cf3f599542d9c53e8cce0455b51ea2fd3b"
+  },
+  "checks": {
+    "exactInstallExitCode": 0,
+    "nativeTypecheckExitCode": 0,
+    "auditGateExitCode": 0,
+    "auditGateSelfTestExitCode": 0,
+    "nativeNpmAuditExitCode": 1,
+    "nativeAudit": {
+      "info": 0,
+      "low": 0,
+      "moderate": 10,
+      "high": 0,
+      "critical": 0,
+      "total": 10
+    },
+    "webNpmAuditExitCode": 0,
+    "webAudit": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "limitations": [
+    "Native package audit retains one UUID leaf advisory through the current xcode dependency contract; no unsupported semver major override was forced.",
+    "Full native suite and final browser capture are pending.",
+    "Five published original PNGs are unavailable locally; no replacement bytes were supplied."
+  ]
+}

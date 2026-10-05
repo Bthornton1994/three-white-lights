@@ -1,0 +1,2 @@
+import { ROLLOUT_LIMITS } from './rolloutLimits.ts';
+Deno.serve(request => new Response(request.method === 'OPTIONS' ? null : JSON.stringify({ message: 'Rollout verification endpoint retired.' }), { status: request.method === 'OPTIONS' ? ROLLOUT_LIMITS.noContentStatus : ROLLOUT_LIMITS.goneStatus, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': 'https://supabase.com', 'Access-Control-Allow-Headers': 'apikey, authorization, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' } }));

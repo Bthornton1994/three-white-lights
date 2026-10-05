@@ -1,0 +1,38 @@
+{
+  "recordedAt": "2026-10-01T07:06:32.928Z",
+  "projectId": "qbvmtgaphvpwpwemplje",
+  "project": {
+    "id": "qbvmtgaphvpwpwemplje",
+    "ref": "qbvmtgaphvpwpwemplje",
+    "organization_id": "cegpkucfsnvkorryroqm",
+    "organization_slug": "cegpkucfsnvkorryroqm",
+    "name": "Bthornton1994's Project",
+    "region": "us-east-2",
+    "status": "ACTIVE_HEALTHY",
+    "database": {
+      "host": "db.qbvmtgaphvpwpwemplje.supabase.co",
+      "version": "17.6.1.155",
+      "postgres_engine": "17",
+      "release_channel": "ga"
+    },
+    "created_at": "2026-08-18T13:55:57.807884Z"
+  },
+  "query": "SELECT current_database() AS database_name, clock_timestamp() AS database_time, to_regclass('public.twl_accounts')::text AS twl_accounts, to_regclass('public.twl_receipts')::text AS twl_receipts;",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"error\":{\"name\":\"HttpException\",\"message\":\"Failed to run sql query: Connection terminated due to connection timeout\"}}"
+      }
+    ],
+    "structuredContent": {
+      "error_code": "INVALID_ARGUMENT"
+    },
+    "isError": true
+  },
+  "mutationAttempted": false,
+  "limitations": [
+    "The control-plane health status did not establish database query availability.",
+    "No production migration or function deployment was attempted."
+  ]
+}

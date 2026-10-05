@@ -1,0 +1,102 @@
+name: Living gym candidate QA
+on:
+  push:
+    branches: [codex/production-iron-amber]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gym-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  gym:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm --prefix web ci
+      - run: npm --prefix web run typecheck:test
+      - name: Install isolated browser runtime
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Save bounded browser runtime for local artifact inspection
+        run: |
+          tar --exclude='chromium-[0-9]*' -czf /tmp/gym-browser.tgz -C "$HOME/.cache" ms-playwright
+          mkdir -p /tmp/gym-browser-parts
+          split -b 24M -d /tmp/gym-browser.tgz /tmp/gym-browser-parts/runtime-
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gym-browser-runtime-00-${{ github.sha }}
+          path: /tmp/gym-browser-parts/runtime-00
+          compression-level: 0
+          if-no-files-found: ignore
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gym-browser-runtime-01-${{ github.sha }}
+          path: /tmp/gym-browser-parts/runtime-01
+          compression-level: 0
+          if-no-files-found: ignore
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gym-browser-runtime-02-${{ github.sha }}
+          path: /tmp/gym-browser-parts/runtime-02
+          compression-level: 0
+          if-no-files-found: ignore
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gym-browser-runtime-03-${{ github.sha }}
+          path: /tmp/gym-browser-parts/runtime-03
+          compression-level: 0
+          if-no-files-found: ignore
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gym-browser-runtime-04-${{ github.sha }}
+          path: /tmp/gym-browser-parts/runtime-04
+          compression-level: 0
+          if-no-files-found: ignore
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gym-browser-runtime-05-${{ github.sha }}
+          path: /tmp/gym-browser-parts/runtime-05
+          compression-level: 0
+          if-no-files-found: ignore
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gym-browser-runtime-06-${{ github.sha }}
+          path: /tmp/gym-browser-parts/runtime-06
+          compression-level: 0
+          if-no-files-found: ignore
+          retention-days: 3
+      - name: Run actual scene, touch and account persistence scenarios
+        run: node scripts/gym-playtest.mjs
+      - name: Inspect official benchmark media, separate from shipped assets
+        if: always()
+        run: node scripts/gym-benchmark-inspection.mjs
+      - name: Attach dated screenshots, uncut video and measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: living-gym-${{ github.sha }}
+          path: .gauntlet/shots/gym-empire/after/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Attach official research media and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gym-benchmarks-${{ github.sha }}
+          path: .gauntlet/shots/gym-empire/benchmarks/
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Identity tier harness</title>
+    <!--
+      Screenshot harness for the Tier 3 surfaces (GDD §7.3): the shop screen and
+      character select.
+
+      Metro serves any module as its own bundle, so this page mounts
+      src/licensing/licensingEntry.tsx directly instead of the app's index.ts.
+      That is how the licensing surfaces get photographed by tools/shoot.mjs
+      without touching App.tsx, which belongs to other pieces of this run.
+
+        bash tools/dev-web.sh
+        node tools/shoot.mjs out.png \
+          --url 'http://localhost:8081/licensing.html?panel=character-select' \
+          --wait 9000 --sel licensing-panel
+
+      Every partner shown is a fictional placeholder. Nothing here is a real
+      brand or a real athlete, and src/licensing/realIp.ts fails the test suite
+      if one ever appears.
+    -->
+    <style>
+      html, body, #root { height: 100%; margin: 0; padding: 0; background: #12141a; }
+      #root { display: flex; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="/src/licensing/licensingEntry.bundle?platform=web&dev=true&hot=false&minify=false"></script>
+  </body>
+</html>

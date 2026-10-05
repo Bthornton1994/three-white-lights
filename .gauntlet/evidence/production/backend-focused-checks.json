@@ -1,0 +1,67 @@
+{
+  "finishedAt": "2026-10-01T06:42:30.535706+00:00",
+  "backendSourceReference": "b246f9a423a3256465c56ed2fb111144fc3b6a21",
+  "checks": [
+    {
+      "name": "generated bundle",
+      "command": "node supabase/bundle-api.mjs --check",
+      "cwd": ".",
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/backend-bundle-check.txt",
+      "logSha256": "42b3deab2d9d137cff57102ebce4758f4bb3987f57c6e458b56310b918c1230d"
+    },
+    {
+      "name": "production strict",
+      "command": "web/node_modules/.bin/tsc --noEmit -p src/production/tsconfig.json",
+      "cwd": ".",
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/backend-production-typecheck.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "edge strict",
+      "command": "web/node_modules/.bin/tsc --noEmit -p supabase/tsconfig.json",
+      "cwd": ".",
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/backend-edge-typecheck.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "browser tests strict",
+      "command": "web/node_modules/.bin/tsc --noEmit -p web/tsconfig.test.json",
+      "cwd": ".",
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/backend-test-typecheck.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "native production tests",
+      "command": "node_modules/.bin/vitest run src/production/server.test.ts",
+      "cwd": ".",
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/backend-native-tests.txt",
+      "logSha256": "455b18f2221cf907ecdc1d9e59f86a6db6efdc6846c6aabf85c8923aa7a22624"
+    },
+    {
+      "name": "browser backend tests",
+      "command": "node_modules/.bin/vitest run --config vitest.config.ts tests/production-client.test.ts tests/production-replay.test.ts tests/production-repository.test.ts",
+      "cwd": "web",
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/backend-web-tests.txt",
+      "logSha256": "98b84a1bd754fb40861492ec811f536cf178d4e52ba5d9e7ba1ac1a605c2ce8b"
+    }
+  ],
+  "nativeTestsPassed": 3,
+  "browserBackendTestsPassed": 31,
+  "totalTestsPassed": 34,
+  "bundle": {
+    "checked": true,
+    "inputs": 56,
+    "bytes": 231339,
+    "sha256": "6a3f64d04e4608efda8dbc860524ef0ecdbd2d8916f5e0b7109d4f87f40081a1"
+  },
+  "limitations": [
+    "Local PGlite uses one connection; no live Supabase or multi-connection PostgreSQL result is claimed.",
+    "The complete saved-account browser capture remains pending after the native watchdog."
+  ]
+}

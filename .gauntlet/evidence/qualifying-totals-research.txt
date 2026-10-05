@@ -1,0 +1,132 @@
+EVIDENCE BUNDLE — piece qualifying-totals-research
+generated 2026-08-14T07:33:44.798Z
+repo /home/user/wt-qt-research
+commit 0d57d9a5182d3db112f18f116d654ae0fc2a7c0a
+working tree clean (ignoring only this script's own output and .gauntlet/state.json)
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+CHECK THE COMMIT ABOVE against the code you were asked to grade. If it does
+not match, this bundle describes different code and its results do not apply
+— report the evidence as stale rather than grading against it.
+
+WHY THE STAMP WILL NOT EQUAL HEAD, AND WHY THAT IS NOT A PROBLEM.
+
+Three critics in a row have spent a paragraph working this out from
+.git/logs/HEAD, correctly, and then had to record that they could not run
+git diff to finish the argument. So it is stated here instead.
+
+A bundle produced at commit X is itself committed BY a later commit, so it
+can never stamp the commit it lives in. The stamp will normally be one or
+two commits behind HEAD, and those commits will be the bundle itself and a
+progress-page update.
+
+What makes that safe is not the ordering — it is that
+`node tools/evidence.mjs <piece> --verify` is run immediately before a critic
+is dispatched, and it FAILS unless: no file outside the run-artefact and
+docs paths changed between the stamp and HEAD (default-deny — everything is
+code unless named otherwise, including App.tsx at the repo root and all of
+tools/); the working tree carries no uncommitted code; and every committed
+browser-shot record is present, dated, captured clean, current, and green.
+
+If any of that were false the dispatch would not have happened. You are not
+being asked to take that on trust: the check is in tools/evidence.mjs and you
+can read it. But you do not need to reconstruct it from the reflog.
+
+======================================================================
+$ npx vitest run src/licensing/realIp.test.ts --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/wt-qt-research
+
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > walks the whole repository, not just src/ 5ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reports every file type it reads, and every file it cannot 125ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > agrees with the repository about which files exist 1ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reports a reach difference rather than swallowing it 1ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > keeps an untracked file out of the counts and inside the scan 1ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reads test files, .mts, .toml and an extensionless file 1ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > never walks into a sibling git worktree 0ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > has a renderable inventory with real strings in it 0ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > collects every Tier 3 slot of every entry 1ms
+ ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > reads a source file in a language nobody put on a list 0ms
+ ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > refuses bytes that cannot be text, by both routes 1ms
+ ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > accepts text a naive byte test would reject 0ms
+ ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > gives real files in this tree the verdicts a reader would expect 1ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > is non-empty and covers all six categories 0ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > finds a project name inside a URL — host, path segment and slug 1ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > watches a platform by its DOMAIN, and that entry cannot fire on our verdict term 1ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > has no dead entry in the two derived categories 1ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > gives every entry a reason and never repeats one 3ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > does not also claim to skip a name it watches 1ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > lists as deliberately-unwatched only names that are really in this tree 9ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > matches on word boundaries, so a checksum is not a brand 17ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > is case-insensitive 0ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > escapes regex metacharacters in a name 0ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > is clean on the unmutated inventory, so a finding is the mutation 61ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand in a Tier 2 name tag 56ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real athlete in a Tier 3 caption, behind the symbol 56ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real athlete planted into the sample-card fixtures, as data 2ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches the same plant as RENDERABLE CONTENT, not only as source text 1ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand planted into a tuned copy string 0ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand planted into app.json, in BOTH halves 2ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real federation planted into the Expo web config 1ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand in an asset FILENAME 1ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real federation in a file type the old allowlist declined 1ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > classifies a .mts comment as a comment, not as code 0ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > does not exempt the watchlist file outside its watchlist regions 111ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > does not exempt the watchlist file for the NEWLY watched names either 113ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > exempts each region only as far as its own closing bracket 163ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > leaves the watchlist file with no pinned citations of its own 82ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > exempts exactly one file and exactly three of its regions 1ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > reports the file, the line and the name, so a failure is actionable 1ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > tells a comment apart from a string on the same line 1ms
+ ✓ src/licensing/realIp.test.ts > the audit is not a sieve > passes the fictional catalogue 1ms
+ ✓ src/licensing/realIp.test.ts > the audit is not a sieve > does not fire on ordinary prose that contains a brandish word 1ms
+ ✓ src/licensing/realIp.test.ts > the audit is not a sieve > does not fire on the fictional federations already in the tree 0ms
+ ✓ src/licensing/realIp.test.ts > the audit is not a sieve > does not fire on a real town that is not a meet series 0ms
+ ✓ src/licensing/realIp.test.ts > the audit is not a sieve > leaves the formula eponyms alone 1ms
+ ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in any string the game can draw 57ms
+ ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in the NAME of any file that ships 20ms
+ ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds no watchlist name anywhere in the licensing catalogue 7ms
+ ✓ src/licensing/realIp.test.ts > the reviewable citation list > is exactly the list in realIp.ts — a new mention is a human decision 2ms
+ ✓ src/licensing/realIp.test.ts > the reviewable citation list > is not vacuous — the baseline citations are still found 0ms
+ ✓ src/licensing/realIp.test.ts > the reviewable citation list > counts the open-source project citations, which is what it used to miss 0ms
+ ✓ src/licensing/realIp.test.ts > the reviewable citation list > counts the game-industry citations, the second blind spot of the same shape 0ms
+ ✓ src/licensing/realIp.test.ts > the reviewable citation list > keeps the published-record provenance the tests depend on 0ms
+ ✓ src/licensing/realIp.test.ts > the reviewable citation list > separates the comment citations from the code ones 0ms
+ ✓ src/licensing/realIp.test.ts > the reviewable citation list > lists only files that exist 8ms
+ ✓ src/licensing/realIp.test.ts > the reviewable citation list > carries a filename row, so the binary half is not silently empty 0ms
+
+ Test Files  1 passed (1)
+      Tests  57 passed (57)
+   Start at  07:33:45
+   Duration  4.11s (transform 1.13s, setup 0ms, import 3.01s, tests 926ms, environment 0ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx vitest run
+[whole suite] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/wt-qt-research
+
+
+ Test Files  85 passed (85)
+      Tests  3349 passed (3349)
+   Start at  07:33:50
+   Duration  350.55s (transform 7.00s, setup 0ms, import 30.15s, tests 795.31s, environment 10ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)

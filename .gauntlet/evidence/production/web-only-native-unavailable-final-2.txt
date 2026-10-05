@@ -1,0 +1,24 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> three-white-lights-web@1.0.0 test:domain
+> node --import tsx ../scripts/production-domain.mjs
+
+localSessionServer: the stored save was refused (FUTURE_VERSION: save is schema version 999 and this build reads up to 2 — refusing rather than guessing at a future shape); starting a fresh lifter — the refused bytes are quarantined
+✔ the browser clock feeds the frozen lift engine one input per fixed tick (7.395342ms)
+✔ a background hitch pauses and releases the bar without fast-forwarding (0.239115ms)
+✔ training moves e1RM and streak through the port, never official Total; replay is refused (2.545443ms)
+✔ a pound training card is refused before kilogram progression changes (0.147318ms)
+✔ identity and accepted training survive save/reopen without reminting or losing facts (2.063209ms)
+✔ a complete judged meet records an official Total while a duplicate cannot record twice (3.676049ms)
+✔ unreadable future saves are quarantined before a fresh mutation replaces the active key (0.91763ms)
+✔ facility saves round-trip durable truth and fail closed on unknown versions (3.419338ms)
+✔ away earnings stop at the shipped cap even after an arbitrarily long absence (0.340946ms)
+✔ practice actions bank sub-tick elapsed time without fractional engine clocks or discarded remainder (1.359084ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37.206552

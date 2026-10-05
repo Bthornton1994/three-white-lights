@@ -1,0 +1,115 @@
+EVIDENCE BUNDLE — piece A2
+generated 2026-08-04T20:20:56.485Z
+repo /home/user/three-white-lights
+commit 9602da16ebd03a97f75772288ea7aae0a4731106
+working tree clean (ignoring .gauntlet/ run artefacts)
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+CHECK THE COMMIT ABOVE against the code you were asked to grade. If it does
+not match, this bundle describes different code and its results do not apply
+— report the evidence as stale rather than grading against it.
+
+======================================================================
+$ npx vitest run src/art/gymScene.test.ts --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/three-white-lights
+
+ ✓ src/art/gymScene.test.ts > the room is a room > covers every pixel of its grid — no holes for a screen colour to show 300ms
+ ✓ src/art/gymScene.test.ts > the room is a room > draws a wall, a floor, a platform, lamps and props 5ms
+ ✓ src/art/gymScene.test.ts > the room is a room > renders the same bytes twice — nothing in here is random 24ms
+ ✓ src/art/gymScene.test.ts > the room is a room > resolves every index it draws to a real colour 8ms
+ ✓ src/art/gymScene.test.ts > the room is a room > draws only background banks — the room never borrows a figure colour 7ms
+ ✓ src/art/gymScene.test.ts > the room is a room > gives the two venues different rooms, from one renderer 15ms
+ ✓ src/art/gymScene.test.ts > the room is a room > composes at a size that is not the lift stage 272ms
+ ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > uses the sprite own integer upscale 0ms
+ ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > puts the two pixel grids on ONE lattice 1ms
+ ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > lands the drawn floor on the drawn soles 0ms
+ ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > covers the stage and does not overshoot it by a whole scene pixel 0ms
+ ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > composes the room around the lifter centre line, not the grid centre 0ms
+ ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > keeps the junction above the floor and the platform below it 0ms
+ ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > reserves a band that really does contain the drawn figure 0ms
+ ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > places no training prop inside it 0ms
+ ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > places no meet prop inside it 0ms
+ ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > keeps the bright wall colours out of it, on the rendered pixels 575ms
+ ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > is a rule a bad placement breaks — checked by planting one 0ms
+ ✓ src/art/gymScene.test.ts > the room goes behind the figure and stays there > does not overwrite one pixel of the lifter or the bar 133ms
+ ✓ src/art/gymScene.test.ts > the room goes behind the figure and stays there > leaves the sprite grid itself untouched 9ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > passes every bound at every moment of the rep 188ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > FAILS NOTHING IN THE MEET VENUE EITHER — the known fail is closed 149ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > keeps the seating clear of the figure by GEOMETRY, checked on the silhouette 7ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > and the training gym — the shipped daily screen — fails none 68ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > shows the percentile really is blind to the contact the share catches 33ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > measures a real figure and a real room, not two empty sets 16ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > keeps the figure at the top of the range, by a distance 17ms
+ ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > draws three block courses, at 0.00 / 15.09 / 8.89 luma 1ms
+ ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > and the RENDERED wall agrees with the palette, band for band 7ms
+ ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > THE TOP OF THE WALL IS FLAT, and that is the decision, not an accident 0ms
+ ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > MUTATION: the pins move when the renderer dim map moves 0ms
+ ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > brackets EDGE_LUMA_DELTA between two marks the room really makes 0ms
+ ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > keeps the two derived thresholds derived, not re-typed 0ms
+ ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > SAYS WHAT THE ANCHOR WOULD HAVE TO BE FOR A SHIPPED FRAME TO FAIL 150ms
+ ✓ src/art/gymScene.test.ts > the panel is part of the composite > takes the occluder from the screen that draws it, not from a guess 0ms
+ ✓ src/art/gymScene.test.ts > the panel is part of the composite > converts it to the scene pixels the panel really covers 0ms
+ ✓ src/art/gymScene.test.ts > the panel is part of the composite > hides about a fifth of the room, and the busy fifth 16ms
+ ✓ src/art/gymScene.test.ts > the panel is part of the composite > MOVES THE NUMBERS — widening the panel changes what the room measures 44ms
+ ✓ src/art/gymScene.test.ts > the panel is part of the composite > and removing it changes them the other way 29ms
+ ✓ src/art/gymScene.test.ts > the figure is grounded > darkens the platform under his feet, in the room own ramp 20ms
+ ✓ src/art/gymScene.test.ts > the figure is grounded > narrows as he descends, because the key light is high 2ms
+ ✓ src/art/gymScene.test.ts > the figure is grounded > is what the composite draws, not only what a tool draws 71ms
+ ✓ src/art/gymScene.test.ts > the furniture is grounded too > reads the footprint off the drawing, so nothing has to declare one 1ms
+ ✓ src/art/gymScene.test.ts > the furniture is grounded too > DARKENS THE PLATFORM UNDER THE PROPS STANDING ON IT 3ms
+ ✓ src/art/gymScene.test.ts > the furniture is grounded too > never draws a shadow it has itself called invisible, or one the subject hides in 6ms
+ ✓ src/art/gymScene.test.ts > the furniture is grounded too > REFUSES to shade the rubber, and the refusal is what keeps a bound passing 5ms
+ ✓ src/art/gymScene.test.ts > the furniture is grounded too > MUTATION: turning the cap off changes the room, and the numbers say where 136ms
+ ✓ src/art/gymScene.test.ts > the furniture is grounded too > keeps the shadow inside the reserved hole rule it is drawn under 1ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > DELETING THE ROOM fails the floors — and passes every rim bound 33ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A BUSY ROOM fails the edge-share ceiling 32ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A BUSY ROOM ONLY BEHIND THE FIGURE fails the behind-the-figure ceiling 27ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A BRIGHT ROOM fails the brightness ceilings 30ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM PAINTED IN THE FIGURE OWN VALUES fails ONLY the rim floors 36ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM WITH NO FURNITURE IN IT fails the furniture floor 52ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > THE SAME FURNITURE, MOVED, fails the balance ceiling 25ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > and a legal reshuffle moves the composition numbers without failing 33ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM WHOSE CONTENT IS ALL IN ONE CELL fails the peak ceiling 54ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM REACHING FOR COLOURS IT DOES NOT NEED fails the index ceiling 43ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM LIT BY A WALL OF FILAMENTS fails the bright-share ceiling 63ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > reports nothing at all for the shipped room, so a finding is the plant 16ms
+ ✓ src/art/gymScene.test.ts > the layers are separate layers > slides each at its own rate, and the wall slowest 0ms
+ ✓ src/art/gymScene.test.ts > the layers are separate layers > moves a near prop further than a far one for the same camera 0ms
+ ✓ src/art/gymScene.test.ts > the layers are separate layers > still covers the grid when the camera has moved a long way 1094ms
+ ✓ src/art/gymScene.test.ts > the layers are separate layers > is unexercised by the shipped stage, and says so 0ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > has a closed prop catalogue with no meter, gauge, dial or scoreboard 1ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > names no real athlete, brand, federation or company, anywhere in the layer 18ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > cannot draw a wordmark at all — there is no text path in the room 23ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > carries no drawable string in the prop catalogue at all 17ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > takes no input from which a fatigue level could be drawn 0ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > is a pure renderer — no React, no randomness, no clock, no currency 22ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > never lets the room out-value the lifter, at any moment of any rep 2ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > keeps every rect inside the art box it declares 10ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > draws every prop in an allocated background colour 6ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > lights every prop from the same side as the figure 1ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > places every venue prop somewhere the scene can actually draw it 1ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > hangs the lamps evenly and inside the frame 3ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > puts the windows above the figure, where their glass cannot hurt 0ms
+ ✓ src/art/gymScene.test.ts > what this file can and cannot make fail > accounts for every bound in BOUNDS, as planted or as declared unplanted 1ms
+ ✓ src/art/gymScene.test.ts > what this file can and cannot make fail > has actually run the plants — a filtered run is not a coverage run 0ms
+ ✓ src/art/gymScene.test.ts > what this file can and cannot make fail > has NOT quietly acquired a plant for the three it says it lacks 0ms
+
+ Test Files  1 passed (1)
+      Tests  80 passed (80)
+   Start at  20:20:57
+   Duration  5.22s (transform 483ms, setup 0ms, import 1.04s, tests 3.97s, environment 0ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)

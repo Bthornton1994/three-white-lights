@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-10-01T07:19:35.406745+00:00",
+  "sourceChanges": [
+    {
+      "path": "src/game/streakEntitlement.ts",
+      "beforeSha256": "3c8984b3f91323b192830a727106b39c12fb9c4a42196bb856e9cf6ce1c51782",
+      "afterSha256": "cd6e594d37e779be49852023134b6bca84a5cf4aeff5d2c431f6cf2fc01a8360"
+    }
+  ],
+  "sourceChangeScope": "Reviewed exported audit inventory; runtime bundle remains byte-identical.",
+  "runtimeBundleByteIdentical": true,
+  "bundleBytes": 231339,
+  "bundleSha256": "6a3f64d04e4608efda8dbc860524ef0ecdbd2d8916f5e0b7109d4f87f40081a1",
+  "bundleGitBlob": "e693ca05a79775e65fe5cfc76dedb8677192b7cb",
+  "currentManifestSha256": "5d2d2ec074f6fddeb247b951501ac6da5f36aad5907f1f536f387fde416650f1",
+  "capturedManifestSha256": "4002c10b504e9055ccdf9611f3161a84a777119ff756e820ff9f3c6778a96c0a",
+  "changedCapturedFiles": [
+    "supabase/functions/twl-api/domain.manifest.json"
+  ],
+  "captureReportUnmodified": true,
+  "captureReportSha256": "85dbba392a199342274993f32f89ad7caf615fbb9c91e43d6a99bdbb40562679",
+  "captureStatus": "account-flow-passed-art-incomplete",
+  "bundleSourceCount": 56,
+  "commands": [
+    {
+      "command": "node supabase/bundle-api.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node supabase/bundle-api.mjs --check",
+      "exitCode": 0
+    }
+  ],
+  "limitations": [
+    "The prior capture and its original manifest/source attestation are preserved unchanged.",
+    "This local equivalence check does not establish live Supabase deployment or physical-device feel."
+  ]
+}

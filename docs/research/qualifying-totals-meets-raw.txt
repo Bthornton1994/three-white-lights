@@ -1,0 +1,346 @@
+=== local (2647 meets, 249 contributing zero rows) ===
+SUMMARY ONLY — the residual tier. rows kept: 53549. See the header comment in qualifyingTotalsDerive.mjs.
+
+=== regional (305 meets, 5 contributing zero rows) ===
+   10  2021-01-16  usapl/WY-2021-01  Wyoming State Championships
+   27  2021-01-23  usapl/WI-2021-01  WI State Championship
+    3  2021-02-06  usapl/LA-2021-01  Louisiana State Championship
+   10  2021-03-27  usapl/ID-2021-01  Idaho State Championships
+   37  2021-04-10  usapl/FL-2021-07-B  39th Annual Florida State Championships
+   20  2021-04-10  usapl/NH-2021-01  New Hampshire State Championships
+   13  2021-04-17  usapl/WV-2021-01  West Virginia State Championship
+   52  2021-04-24  usapl/GA-2021-04  Georgia State Championships
+   23  2021-04-24  usapl/PA-2021-05  Pennsylvania State Championships
+   26  2021-04-25  usapl/MN-2021-03  Minnesota State Championship
+   36  2021-05-01  usapl/CT-2021-02  Connecticut State Championships
+   23  2021-05-01  usapl/NE-2021-02  Nebraska State Championships
+   11  2021-05-15  usapl/AK-2021-03  Alaska State Championship
+   38  2021-05-16  usapl/AZ-2021-02  Arizona State Championships
+   97  2021-05-23  usapl/VA-2021-05  Virginia Open State Championships
+   58  2021-05-29  usapl/OH-2021-05  Ohio Open & State Championship
+   19  2021-05-29  usapl/OK-2021-01  Oklahoma State Championships
+   44  2021-06-12  usapl/CO-2021-03  Colorado State Championships
+   10  2021-06-26  usapl/AL-2021-03  Alabama State Championship
+   87  2021-07-09  usapl/NJ-2021-02  New Jersey State Championship
+   17  2021-07-10  usapl/AR-2021-01  3rd Annual Arkansas State Championships
+   53  2021-07-10  usapl/NC-2021-01  North Carolina State Championship
+   21  2021-07-24  usapl/ME-2021-01  Maine State Championships
+    8  2021-07-24  usapl/NM-2021-01  New Mexico State Championship
+   53  2021-08-14  usapl/MA-2021-06  Massachusetts / Rhode Island State Championships
+   53  2021-09-18  usapl/CA-2021-10  California State Championships
+   25  2021-09-18  usapl/SD-2021-03  South Dakota State Championships
+   23  2021-10-02  usapl/MO-2021-09  Missouri State Championship and Open
+   54  2021-10-02  usapl/WA-2021-04  Washington State Championship
+   17  2021-10-10  usapl/DE-2021-01  Delaware State Championships
+   25  2021-10-16  usapl/TX-2021-27  Texas State Championships
+  120  2021-11-06  usapl/MI-2021-09  Michigan State Championships
+   12  2021-11-06  usapl/MT-2021-02  Montana State Championships
+   11  2021-11-20  usapl/MD-2021-07  Maryland State Championships
+    8  2021-12-04  usapl/KS-2021-02  Kansas State Championship
+   50  2021-12-11  usapl/SC-2021-06  South Carolina State Championship
+    6  2022-01-16  usapl/MS-2022-01  Mississippi State Championship
+    5  2022-01-29  usapl/WY-2022-01  Wyoming State Championships
+   87  2022-02-19  usapl/GA-2022-01  Georgia State Championships
+   27  2022-02-26  usapl/IL-2022-01  Illinois State Championships
+   30  2022-03-05  usapl/AZ-2022-02  Arizona State Championships
+   25  2022-03-05  usapl/UT-2022-01  Utah State Championship
+    0  2022-03-05  usapl/WI-2022-02-B  WHSPA State Championship
+   21  2022-03-13  usapl/CO-2022-04  Colorado State Championships
+   21  2022-03-26  usapl/ID-2022-01  Idaho State Championships
+   19  2022-03-26  usapl/ME-2022-02  Maine State Championship
+   22  2022-03-26  usapl/MT-2022-01  Big Iron Classic State Championships
+    9  2022-04-02  usapl/NV-2022-01  Nevada State Championships
+   23  2022-04-02  usapl/SD-2022-02  South Dakota State Championships
+   38  2022-04-23  usapl/NE-2022-01  Nebraska State Powerlifting Championships
+   15  2022-04-23  usapl/NH-2022-02  New Hampshire State Championships
+   18  2022-04-23  usapl/OK-2022-02  Oklahoma State Championships
+   16  2022-04-23  usapl/TX-2022-20  Texas State Championships
+    9  2022-04-23  usapl/WV-2022-01  West Virginia State Championship
+   17  2022-05-01  amp/2212  Nevada State Championships
+   29  2022-05-01  usapl/RI-2022-01  Rhode Island State Championships
+   20  2022-05-14  usapl/NM-2022-01  New Mexico State Championships
+   38  2022-05-21  usapl/NY-2022-05  New York State Championships
+   53  2022-05-28  usapl/OH-2022-04  Ohio Open & State Championship
+   74  2022-05-29  usapl/VA-2022-03  Virginia Open State Championships
+   33  2022-06-04  usapl/CT-2022-04  Connecticut State Championships
+   66  2022-06-18  usapl/NC-2022-05  North Carolina State Championships
+   11  2022-06-25  usapl/AK-2022-05  Alaska State Championship
+  101  2022-06-25  usapl/MA-2022-04  Massachusetts State Championships
+    9  2022-07-03  usapl/HI-2022-03  Hawai'i State Championships
+   88  2022-07-08  usapl/NJ-2022-03-B  New Jersey State Championship
+   25  2022-07-30  usapl/PA-2022-19  Pennsylvania State Championship
+  112  2022-08-13  usapl/CA-2022-10  California State Championships
+   24  2022-10-07  amp/2022-NV-03  West Regionals at the Legion Sport Fest
+   59  2022-10-08  usapl/WA-2022-07  Washington State Championship
+   22  2022-10-16  usapl/MO-2022-08  Missouri State Championship
+   11  2022-11-05  usapl/AR-2022-02  Arkansas State Championships
+    8  2022-11-05  usapl/MD-2022-07  Maryland State Championships
+  112  2022-11-05  usapl/MI-2022-08  Michigan State Championships
+   17  2022-11-12  usapl/KY-2022-01  Kentucky State Championships
+   44  2022-11-12  usapl/SC-2022-05  South Carolina State Championships
+   25  2022-12-01  usapl/FL-2022-18  Southeast Regional Champs
+   61  2022-12-03  usapl/FL-2022-13  Florida State Championships
+   38  2022-12-10  usapl/KS-2022-04  Kansas State Championships
+    5  2023-01-21  usapl/OK-2023-01  Oklahoma State Championships
+    9  2023-01-21  usapl/WY-2023-02  Wyoming State Championships
+   29  2023-01-28  usapl/NE-2023-01  Nebraska State Championships
+   21  2023-01-28  usapl/NV-2023-01  Nevada State Championships & Fight or Quit Open
+   53  2023-02-11  usapl/CO-2023-01  Colorado State Championships
+  128  2023-02-17  usapl/GA-2023-01  Georgia State Championships
+   17  2023-02-25  usapl/DE-2023-01  Delaware State Championships
+   13  2023-03-04  amp/2023-NM-01  New Mexico State Championship
+   23  2023-03-04  usapl/OR-2023-01  Oregon State Championships
+    0  2023-03-04  usapl/WI-2023-01  WHSPA State Championship
+   37  2023-03-18  usapl/CT-2023-02  Connecticut State Championships
+   32  2023-03-18  usapl/IN-2023-03  Indiana State Championships
+   25  2023-03-18  usapl/ME-2023-01  Maine State Championship
+   38  2023-03-18  usapl/NC-2023-07  North Carolina State Championships
+   58  2023-03-18  usapl/NY-2023-09  New York State Championships
+    5  2023-03-25  amp/2023-TN-01  Tennessee State Championships
+   50  2023-03-25  usapl/AZ-2023-01  Arizona State Championships
+   34  2023-03-25  usapl/MO-2023-01  Missouri State Primetime and Championship
+   15  2023-03-25  usapl/NH-2023-02  New Hampshire State Championships
+   22  2023-03-25  usapl/SD-2023-02  South Dakota State Championships
+   11  2023-04-08  usapl/ID-2023-01  Idaho State Championships
+   87  2023-04-22  usapl/NJ-2023-02  New Jersey State Championship
+   45  2023-04-22  usapl/PA-2023-13  Pennsylvania State Championship
+   10  2023-04-22  usapl/WV-2023-02  West Virginia State Championship
+   31  2023-04-29  usapl/UT-2023-01  Utah State Championships
+   45  2023-05-20  usapl/MD-2023-05  Maryland State Championships
+    0  2023-05-21  usapl/NH-2023-04  Massachusetts/New Hampshire Single Lift State Championships
+  122  2023-05-27  usapl/REG-2023-05  Central and Midwest Regional Championships
+   31  2023-06-17  usapl/IL-2023-05  Illinois State Championship
+   91  2023-06-17  usapl/REG-2023-02  Southeast Regionals
+   70  2023-07-01  usapl/REG-2023-03  Southern Regionals
+   93  2023-07-07  usapl/REG-2023-01  Mid Atlantic Regional Championship
+   17  2023-07-09  amp/2023-NH-02  New Hampshire State Championships
+  143  2023-07-15  usapl/REG-2023-04  Northeast Regionals
+   67  2023-08-12  usapl/REG-2023-06  West Coast Regional Championships
+   13  2023-09-30  usapl/MT-2023-01  Montana State Championships
+   33  2023-10-07  usapl/CA-2023-26  California State Championship
+   84  2023-10-07  usapl/WA-2023-04  Washington State Championship
+    6  2023-10-22  amp/2023-TX-06  Texas State Championships
+    5  2023-10-28  amp/2023-FL-15  32nd Annual Florida State Open Championships
+   10  2023-10-28  amp/2023-GA-03  Georgia State Championships
+   27  2023-11-04  usapl/NM-2023-03  New Mexico State Championships
+   44  2023-11-05  usapl/VA-2023-13  Virginia State Championships
+   48  2023-11-11  usapl/FL-2023-19  Florida State Championships
+   48  2023-11-11  usapl/OH-2023-12  Ohio Open & State Championship
+   45  2023-11-11  usapl/SC-2023-07  South Carolina State Championship & Southeast Open
+   12  2023-11-12  usapl/KY-2023-02  Kentucky State Championship
+   19  2023-11-18  usapl/AR-2023-02  Arkansas State Championships
+   98  2023-11-18  usapl/MA-2023-03  Massachusetts State Championships
+  103  2023-11-18  usapl/MI-2023-11  Michigan State Championships
+    5  2023-12-02  usapl/AK-2023-06  Alaska State Championship
+    7  2023-12-09  usapl/RI-2023-02  Rhode Island State Championships
+   19  2024-01-20  usapl/TX-2024-06  Texas State Championship
+   29  2024-01-27  usapl/KS-2024-01  Kansas State Championships
+   21  2024-01-27  usapl/NE-2024-03  Nebraska State Championship
+    5  2024-01-27  usapl/WY-2024-01  Wyoming State Championship
+    3  2024-02-03  usapl/AUS-2024-04  Tasmanian State Championships
+   16  2024-02-10  usapl/OK-2024-01  Oklahoma State Championships
+  135  2024-02-23  usapl/GA-2024-03  Georgia State Championship
+   10  2024-02-24  usapl/AL-2024-01  Alabama State Championship
+   30  2024-02-24  usapl/AZ-2024-01  Arizona State Championships
+   54  2024-02-24  usapl/CO-2024-01  Colorado State Championship
+   13  2024-02-24  usapl/DE-2024-01  Delaware State Championships
+    0  2024-03-01  amp/2024-WI-01  WHSPA State Championship
+   44  2024-03-02  usapl/IL-2024-01  Illinois State Championships and Primetime
+    0  2024-03-02  usapl/WI-2024-10  WHSPA State Championships
+   14  2024-03-09  usapl/MO-2024-01  Missouri State Championship & Primetime
+   10  2024-03-09  usapl/NV-2024-01  Nevada State Championships
+   43  2024-03-16  usapl/CT-2024-02  Connecticut State Championships
+  107  2024-03-16  usapl/NY-2024-02  New York State Championships
+   22  2024-03-16  usapl/OR-2024-01  Oregon State Championships
+   25  2024-03-23  amp/2024-AZ-03  Arizona State Championships
+   21  2024-03-23  usapl/ME-2024-01  Maine State Championship
+   44  2024-03-23  usapl/NC-2024-08  North Carolina State Championships
+   16  2024-03-30  usapl/NH-2024-01  New Hampshire State Championships
+   25  2024-04-06  amp/2024-NM-01  New Mexico State Championship
+   17  2024-04-13  usapl/WI-2024-09  Wisconsin State Championship
+    9  2024-04-20  amp/2024-NY-02  New York State Championship
+   24  2024-04-20  usapl/UT-2024-02  Utah State Championships
+    4  2024-04-20  usapl/WV-2024-01  West Virginia State Championships
+   77  2024-04-26  usapl/NJ-2024-04  New Jersey State Championship
+   17  2024-04-27  usapl/IN-2024-01  Indiana State Championships
+   78  2024-05-04  usapl/PA-2024-07  Pennsylvania State Championship
+   14  2024-05-04  usapl/SD-2024-02  South Dakota State Championships
+   95  2024-06-01  usapl/REG-2024-06  Central And Midwest Regionals
+   13  2024-06-08  amp/2024-FL-13  45th Annual Florida Sports Foundation Sunshine State Games Championship
+    8  2024-06-08  usapl/AK-2024-02  Alaska State Championship
+   88  2024-06-08  usapl/REG-2024-04  South West Regional Championships
+  137  2024-06-08  usapl/REG-2024-07  Northeast Regional Championships
+   80  2024-06-08  usapl/REG-2024-07-B  Southeast Regional Championship
+   17  2024-06-22  amp/2024-IL-07  Illinois State Championship
+   62  2024-06-29  usapl/REG-2024-01  Northwest Regionals
+   19  2024-07-06  amp/2024-FL-12  33rd Annual Florida State Open Championships
+   89  2024-07-12  usapl/REG-2024-03  Mid-Atlantic Regional Championship
+   32  2024-07-14  amp/2024-NH-02  Cooperative New England State Championships
+   31  2024-07-20  usapl/HI-2024-03  Hawai'i State Championships
+   51  2024-07-27  usapl/REG-2024-01-B  Southern Regional Championship
+    7  2024-09-21  usapl/AR-2024-02  Arkansas State Championships
+   24  2024-09-28  usapl/MD-2024-08  Maryland State Championships
+    1  2024-10-05  amp/2024-TN-01  Tennessee State Championship
+   76  2024-10-05  usapl/WA-2024-07  Washington State Championship
+   17  2024-10-12  usapl/MT-2024-01  Montana State Championships
+   13  2024-10-26  amp/2024-TX-10  Texas State Championship
+   51  2024-11-02  usapl/CA-2024-25  California State Championship
+   90  2024-11-02  usapl/MI-2024-11  Michigan State Championships
+   34  2024-11-09  usapl/NM-2024-03  New Mexico State Championships
+   33  2024-11-09  usapl/SC-2024-10  South Carolina State Championship
+   40  2024-11-09  usapl/VA-2024-16  Virginia Open State Championships
+   63  2024-11-17  usapl/FL-2024-22  Florida State Championship
+    9  2024-11-17  usapl/TN-2024-03  Tennessee State Championship
+    6  2024-11-23  amp/2024-LA-06  Louisiana State Championship
+   67  2024-11-23  usapl/MA-2024-06  Massachusetts State Championships
+   62  2024-11-23  usapl/OH-2024-10  Ohio State Championship
+   13  2024-12-07  usapl/ID-2024-04  Idaho State Championships
+   75  2024-12-14  amp/2024-GA-07  Georgia State Championship
+   13  2024-12-14  usapl/RI-2024-01  Rhode Island State Championships
+    4  2025-01-04  usapl/TN-2025-02  Tennessee State Championship
+    5  2025-01-11  usapl/LA-2025-03  Louisiana State Championship
+    1  2025-01-18  amp/2025-WI-01  Wisconsin State Championship
+   19  2025-01-18  usapl/IN-2025-02  Indiana State Championship
+    4  2025-01-18  usapl/MS-2025-01  Mississippi State Championship
+   81  2025-01-18  usapl/TX-2025-01  Texas State Championships
+   24  2025-01-18  usapl/WI-2025-01  Wisconsin State Championships
+    3  2025-01-25  usapl/AR-2025-01  Arkansas State Championships
+   12  2025-01-25  usapl/KS-2025-03  Kansas State Championships
+   67  2025-01-25  usapl/NE-2025-01  Nebraska State Championship
+   10  2025-02-01  usapl/AL-2025-01  Alabama State Championships
+   79  2025-02-07  usapl/GA-2025-01  Georgia State Championships
+    7  2025-02-08  usapl/WY-2025-01  Wyoming State Championships
+   27  2025-02-15  usapl/MD-2025-03  Maryland State Championships
+    8  2025-02-16  usapl/OK-2025-01  Oklahoma State Championships
+   65  2025-02-22  usapl/CA-2025-13  California State Championships
+   74  2025-02-22  usapl/CO-2025-01  Colorado State Championships
+   20  2025-03-08  amp/2025-AZ-02  Arizona State Championship
+    6  2025-03-15  amp/2025-NJ-01  1st Annual Garden State NJ Open Championships
+   15  2025-03-15  usapl/AZ-2025-01  Arizona State Championships
+   57  2025-03-15  usapl/CT-2025-01  Connecticut State Championships
+   24  2025-03-15  usapl/IL-2025-06  Illinois State Championships
+    8  2025-03-15  usapl/NH-2025-03  New Hampshire State Champsionships
+   95  2025-03-15  usapl/NY-2025-01  New York State Championships
+   29  2025-03-15  usapl/NY-2025-17  New York State Championships - Primetime
+   24  2025-03-16  usapl/NV-2025-02  Nevada State Championship
+   15  2025-03-22  usapl/OR-2025-01  Oregon State Championships
+   32  2025-03-23  usapl/VA-2025-02  Virginia State Championships
+   18  2025-03-29  usapl/ME-2025-01  Maine State Championship
+   31  2025-03-29  usapl/MO-2025-01  Missouri State Championship and Primetime
+   20  2025-03-29  usapl/UT-2025-02  Utah State Championship
+  101  2025-04-11  usapl/NJ-2025-02  New Jersey State Championship
+   60  2025-04-12  usapl/NC-2025-04  North Carolina State Championships
+    8  2025-04-12  usapl/VT-2025-01  Vermont State Championships
+   25  2025-04-13  usapl/HI-2025-02  Hawai'i State Championships
+   56  2025-04-26  usapl/PA-2025-03  Pennsylvania State Championship
+    5  2025-04-27  amp/2025-PA-03  Pennsylvania State Championship
+    6  2025-06-14  usapl/AK-2025-02  Alaska State Championships
+   16  2025-06-21  amp/2025-FL-12  46th Annual Florida Sports Foundation Sunshine State Games Championship
+   18  2025-06-21  amp/2025-IL-06  Illinois State Championship
+   13  2025-07-05  amp/2025-FL-06  34th Annual Florida State Championships
+   17  2025-07-12  amp/2025-NJ-02  New Jersey State Championships
+   13  2025-07-13  amp/2025-NH-02  New Hampshire State Championships
+   37  2025-07-19  amp/2025-NM-01  New Mexico State Games Championship
+  114  2025-09-05  usapl/REG-2025-01  Southwest Regionals
+  264  2025-09-06  usapl/REG-2025-02  Northeast Regionals
+  180  2025-09-06  usapl/REG-2025-04  West Regionals
+  138  2025-09-06  usapl/REG-2025-05  Midwest Regionals
+    4  2025-09-20  amp/2025-MS-02  Mississippi State Championship
+   12  2025-09-27  amp/2025-ID-02  Idaho State Championship
+   15  2025-10-11  usapl/MT-2025-01  Montana State Championships
+  143  2025-10-18  usapl/REG-2025-03  Southeast Regionals
+    5  2025-10-25  amp/2025-TX-17  Texas State Championship
+   72  2025-11-01  amp/2025-CA-08  California State Championships
+   16  2025-11-01  amp/2025-IN-02  Indiana State Championship
+   37  2025-11-01  amp/2025-OR-03  Oregon State Championships
+   11  2025-11-01  usapl/LA-2025-09  Louisiana State Championship
+   77  2025-11-01  usapl/WA-2025-10  Washington State Championship
+   31  2025-11-08  usapl/NM-2025-03  New Mexico State Championships
+   52  2025-11-09  usapl/FL-2025-19  Florida State Championship
+   21  2025-11-15  usapl/DE-2025-01  Delaware State Championships
+   30  2025-11-15  usapl/SC-2025-08  South Carolina State Championship
+   16  2025-11-15  usapl/SD-2025-02  South Dakota State Championships
+   36  2025-11-22  amp/2025-GA-06  Georgia State Championship
+    8  2025-11-22  usapl/ID-2025-02  Idaho State Championships
+   71  2025-11-22  usapl/MA-2025-14  Massachusetts State Championships
+   82  2025-11-22  usapl/MI-2025-08  Michigan State Championship
+   23  2025-11-22  usapl/MI-2025-09  Michigan State Championship Primetime
+   46  2025-12-06  usapl/OH-2025-07  Ohio State Championship
+   11  2025-12-06  usapl/WV-2025-02  West Virginia State Championship
+    6  2025-12-20  amp/2025-TN-05  Tennessee State Championships
+   33  2026-01-03  usapl/TN-2026-01  Tennessee Open State Championship
+   62  2026-01-17  usapl/TX-2026-01  Texas State Championships
+   10  2026-01-24  usapl/AL-2026-01  Alabama State Championships
+   75  2026-01-24  usapl/CA-2026-01  California State Championships
+   33  2026-01-24  usapl/IL-2026-01  Illinois State Championship
+    9  2026-01-31  usapl/KS-2026-04  Kansas State Championships
+   19  2026-01-31  usapl/KY-2026-01  Kentucky State Championships
+   47  2026-01-31  usapl/NC-2026-01  North Carolina State Championships
+   20  2026-01-31  usapl/NC-2026-09  North Carolina State Championships Primetime
+   62  2026-01-31  usapl/NE-2026-02  Nebraska State Championship
+   33  2026-01-31  usapl/WI-2026-07  Wisconsin State Championships
+   27  2026-02-01  usapl/IN-2026-02  Indiana State Championship
+   10  2026-02-07  usapl/AK-2026-01  Alaska State Championship
+    5  2026-02-07  usapl/AR-2026-01  Arkansas State Championships
+    7  2026-02-07  usapl/MS-2026-01  Mississippi State Championships
+    6  2026-02-07  usapl/WY-2026-01  Wyoming State Championships
+   51  2026-02-14  usapl/GA-2026-01  Georgia State Championships
+   15  2026-02-15  usapl/OK-2026-01  Oklahoma State Championships
+   65  2026-02-21  usapl/CO-2026-01  Colorado State Championships
+   21  2026-02-21  usapl/MO-2026-02  Missouri State Championships
+   13  2026-02-21  usapl/NV-2026-01  Nevada State Championship
+   32  2026-02-22  usapl/VA-2026-01  Virginia State Championships
+   33  2026-02-28  usapl/PA-2026-01  Pennsylania State Championship
+   34  2026-03-07  usapl/AZ-2026-01  Arizona State Championships
+   32  2026-03-21  usapl/CT-2026-04  Connecticut State Championships
+   47  2026-03-21  usapl/MD-2026-01  Maryland State Championship
+   44  2026-03-21  usapl/ME-2026-01  Maine State Championship
+   22  2026-03-21  usapl/OR-2026-01  Oregon State Championships
+   22  2026-03-21  usapl/UT-2026-02  Utah State Championships
+   15  2026-03-28  amp/2026-AZ-03  Arizona State Championship
+   11  2026-03-28  usapl/NH-2026-02  New Hampshire State Championships
+  118  2026-03-28  usapl/NY-2026-01  New York State Championships
+   77  2026-04-24  usapl/NJ-2026-03  New Jersey State Championship
+   20  2026-04-25  amp/2026-PA-01  Pennsylvania State Championships
+   26  2026-04-25  usapl/HI-2026-01  Hawai'i State Championships
+   10  2026-06-06  amp/2026-FL-06  47th Annual Florida Sunshine State Championships
+    4  2026-06-20  amp/2026-LA-06  Louisiana State Championship
+   14  2026-07-04  usapl/GU-2026-01  Battle on the Bay Open Guam State Championships
+   10  2026-07-11  amp/2026-FL-08  35th Annual Florida State Open Championships
+
+=== nationals (22 meets, 11 contributing zero rows) ===
+  157  2021-06-14  usapl/NS-2021-03-D  Raw Nationals
+    0  2021-06-14  usapl/NS-2021-03-G  Equipped Nationals
+   42  2022-04-01  amp/2207  Classic Open Nationals Presented by SBD
+  404  2022-06-08  usapl/NS-2022-04-D  Mega Nationals
+    0  2022-06-18  amp/2217  Nationals
+   65  2023-02-24  amp/2023-NS-03  Classic National Championship
+    0  2023-06-04  amp/2023-NS-05  Equipped Nationals
+    0  2023-06-17  usapl/NS-2023-05  Equipped Nationals
+  433  2023-09-14  usapl/NS-2023-03-K  Raw Nationals
+  125  2024-03-14  amp/2024-NS-03  Classic Raw Open Nationals
+    0  2024-05-19  amp/2024-NS-06  Equipped National Championships
+    0  2024-07-13  usapl/NS-2024-04-C  Equipped Nationals
+  450  2024-09-05  usapl/NS-2024-05  Raw Nationals
+  276  2025-04-03  amp/2025-NS-03  Classic Open Nationals
+    0  2025-06-26  amp/2025-NS-06  Equipped Open Nationals
+  299  2025-06-26  usapl/NS-2025-02  Raw Nationals
+    0  2025-07-25  usapl/NS-2025-05D  EmpowerID Nationals
+    0  2025-07-27  usapl/NS-2025-05B  Equipped Nationals
+  275  2026-03-05  amp/2026-NS-02  Open Nationals
+    0  2026-03-08  usapl/NS-2026-12  EmpowerID Nationals
+  516  2026-06-12  usapl/NS-2026-04C  Raw Nationals
+    0  2026-07-12  usapl/NS-2026-02A  Equipped Nationals
+
+=== worlds (11 meets, 5 contributing zero rows) ===
+  182  2021-09-23  ipf/2103  World Classic Powerlifting Championships
+    0  2021-11-08  ipf/2108  World Powerlifting Championships
+  233  2022-06-06  ipf/2203  World Classic Powerlifting Championships
+    0  2022-11-14  ipf/2210  World Open Equipped Powerlifting Championships
+  359  2023-06-11  ipf/2303  World Classic Powerlifting Championships
+    0  2023-11-13  ipf/2309  World Open Equipped Powerlifting Championships
+  310  2024-06-15  ipf/2404  World Classic Powerlifting Championships
+    0  2024-11-11  ipf/2410  World Open Equipped Powerlifting Championships
+  378  2025-06-08  ipf/2503  World Classic Powerlifting Championships
+    0  2025-11-10  ipf/2508  World Open Equipped Powerlifting Championships
+  346  2026-06-13  ipf/2603  World Classic Powerlifting Championships

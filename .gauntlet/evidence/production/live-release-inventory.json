@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-01T07:24:03.048Z",
+  "projectId": "qbvmtgaphvpwpwemplje",
+  "projectUrl": "https://qbvmtgaphvpwpwemplje.supabase.co",
+  "edgeFunctions": [
+    {
+      "slug": "qa-step2a-golden-path",
+      "status": "ACTIVE",
+      "version": 4,
+      "verifyJwt": true
+    }
+  ],
+  "migrationInventory": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"error\":{\"name\":\"HttpException\",\"message\":\"Failed to list database migrations: Connection terminated due to connection timeout\"}}"
+      }
+    ],
+    "structuredContent": {
+      "error_code": "INVALID_ARGUMENT"
+    },
+    "isError": true
+  },
+  "mutationAttempted": false,
+  "limitations": [
+    "Migration inventory failed with the same database connection timeout.",
+    "Existing unrelated QA function was not changed; no twl-api deployment was observed."
+  ]
+}

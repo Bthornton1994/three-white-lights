@@ -1,0 +1,110 @@
+EVIDENCE BUNDLE — piece M5
+generated 2026-08-04T20:22:28.786Z
+repo /home/user/three-white-lights
+commit 9602da16ebd03a97f75772288ea7aae0a4731106
+working tree clean (ignoring .gauntlet/ run artefacts)
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+CHECK THE COMMIT ABOVE against the code you were asked to grade. If it does
+not match, this bundle describes different code and its results do not apply
+— report the evidence as stale rather than grading against it.
+
+======================================================================
+$ npx vitest run src/game/fatigue.test.ts --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/three-white-lights
+
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > exports exactly the agreed runtime surface, and nothing that names a level 3ms
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > exports no identifier whose name suggests a readable fatigue level 1ms
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > every number-returning export is anchored to a caller-supplied quantity 2ms
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > SessionFeel exposes only qualitative fields; the numeric half is not nameable 2ms
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > a serialised SessionFeel carries no fatigue-derived number 22ms
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > FatigueState is a raw-input ledger and round-trips through JSON 1ms
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > the readiness readout is identical across wildly different fatigue histories 3ms
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > rejects a hand-built SessionFeel, so the hidden half cannot be forged in a literal 1ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > offers a free session on every lift 1ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: taking the free session is never worse than skipping, over a long tail 182ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > the free session is strictly better than skipping when there is fatigue to flush 1ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: a free session can never cause an injury, however fatigued the player is 7ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > a free session cannot injure even after a long run of maximal sessions 0ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: showing up never causes an injury that skipping would have avoided 8ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > reads work, never attendance: no streak or consecutive-day term exists 2ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: an injury can never make a session impossible, so it cannot break a streak 8ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > an injury carries no stat-loss field 0ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > property: a setback is always inside the 2-3 day band, or shorter with physio 22ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > physio takes a whole day off the same setback, down to the floor and no further (GDD §5.4) 1ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > is at most INJURY_MAX_CHANCE_PER_SESSION even on the worst possible day 3ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > an ordinary hard session carries no injury chance, however many days in a row 2ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > technique points reduce risk but never remove it entirely (GDD §2.3) 4ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > starts the day after the session, so the completed session is never retro-capped 0ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > counts down and then disappears 0ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > caps volume on the affected lift only, and leaves other lifts alone 0ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > surfaces GDD §3.5-shaped copy, framed as recoverable 0ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > cannot chain: no second setback while one runs or during its immunity window 1ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > assigns kinds deterministically from the lift — no random pull (GDD §5.3) 1ms
+ ✓ src/game/fatigue.test.ts > fatigue washes out on the same-day / next-day horizon (GDD §3.4) > a hard session is felt tomorrow 0ms
+ ✓ src/game/fatigue.test.ts > fatigue washes out on the same-day / next-day horizon (GDD §3.4) > decays monotonically and reaches baseline exactly, well inside the ledger horizon 1ms
+ ✓ src/game/fatigue.test.ts > fatigue washes out on the same-day / next-day horizon (GDD §3.4) > carries no multi-week arc: a session outside the ledger horizon is invisible 0ms
+ ✓ src/game/fatigue.test.ts > fatigue washes out on the same-day / next-day horizon (GDD §3.4) > accumulates within a session too, and resets between sessions 0ms
+ ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > produces GDD §3.2’s worked examples 0ms
+ ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > exposes no raw score, only a band, a headline and a signed percentage 0ms
+ ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > is monotone: better answers never produce a worse band 0ms
+ ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > shifts the timing window in the right direction 0ms
+ ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > property: every signal is monotone in readiness at any fatigue history 27ms
+ ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > rejects an answer outside the three options 0ms
+ ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > keeps the window inside its configured bounds however extreme the state gets 0ms
+ ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > keeps miss chance a probability whatever the burden 5ms
+ ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > resolves a rep deterministically from a caller-supplied roll 0ms
+ ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > snaps perceived RPE onto the published chart grid and stays inside its range 8ms
+ ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > exposes only a handful of distinct perceived-RPE shifts 2ms
+ ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > reports a grinding bar-speed cue when wrecked and a fast one when primed 0ms
+ ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > gives every cue and band its copy 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the recovery template stays under the free allowance 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the active-recovery flush is strictly below 1 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the injury threshold is positive, so a free session can never injure 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the reference hard session sits below the injury threshold 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > a genuinely overreaching session can still injure 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the derived strain formula tracks the module 16ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the ledger horizon is long enough to hide its own edge 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > decay is steep enough to be a next-day horizon, not a multi-week one 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > technique reduces some injury risk, and can never remove all of it 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the injury duration band matches GDD §3.5 (2-3 days) and can only shorten 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the volume cap always leaves a session that can be completed 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the miss-odds multiplier can never reach zero or invert 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the window scale band brackets 1, so priming is felt and fatigue is survivable 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the band ladders are ordered, complete, and end in a catch-all 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the strain-weight curve rises with RPE and is stepped on the chart grid 0ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the tuning and copy objects are frozen against runtime edits 0ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > is deterministic: identical inputs give identical outputs 0ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > never mutates the state or the records it is handed 0ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > copies records in, so a caller mutating its own object cannot reach into state 0ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > requires sessions in strictly increasing day order 1ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > rejects non-integer days, negative volumes and non-finite inputs 1ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > treats an off-grid RPE by interpolating rather than refusing (it is a feel curve) 0ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > pruning cannot change any signal 5ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > keeps persisted state bounded no matter how long the career runs 1ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > regression: 5x3 @ RPE 9.5 is injury-free on both schedules, not just the sparse one 1ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: every session in the dangerous band stays injury-free repeated daily forever 2ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: training daily never yields more setbacks than training every other day 5ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: the chance a session carries is identical whatever the history before it 100ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: a real session today never causes an injury that resting today would have avoided 4ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > an overreaching session injures a completely fresh lifter on day one 0ms
+
+ Test Files  1 passed (1)
+      Tests  75 passed (75)
+   Start at  20:22:29
+   Duration  915ms (transform 201ms, setup 0ms, import 239ms, tests 473ms, environment 0ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)

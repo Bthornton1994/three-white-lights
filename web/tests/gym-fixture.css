@@ -1,0 +1,4 @@
+.gym-fixture-header{padding:12px;border-bottom:1px solid #76532c;font-size:12px}
+.gym-fixture-header label{display:block;margin-top:8px}
+.gym-fixture-header nav{display:flex;gap:14px;margin-top:8px}
+.gym-fixture-header button,.gym-fixture-header summary{min-height:44px}

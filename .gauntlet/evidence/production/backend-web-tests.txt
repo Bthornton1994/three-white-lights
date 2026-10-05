@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /workspace/scratch/4fc55cb00998/three-white-lights
+
+
+ Test Files  3 passed (3)
+      Tests  31 passed (31)
+   Start at  23:41:10
+   Duration  2.80s (transform 1.54s, setup 0ms, import 2.13s, tests 2.51s, environment 0ms)
+

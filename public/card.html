@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Result card harness</title>
+    <!--
+      Screenshot harness for the shareable meet result card (GDD §6.5).
+
+      Metro serves any module as its own bundle, so this page mounts
+      src/card/cardEntry.tsx directly instead of the app's index.ts. That is how
+      the result card gets photographed by tools/shoot.mjs without touching
+      App.tsx, which belongs to another piece of this run.
+
+        npx expo start --web --port 8091 --offline
+        node tools/shoot.mjs out.png --url 'http://localhost:8091/card.html?card=bombed'
+    -->
+    <style>
+      html, body, #root { height: 100%; margin: 0; padding: 0; background: #12141a; }
+      #root { display: flex; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="/src/card/cardEntry.bundle?platform=web&dev=true&hot=false&minify=false"></script>
+  </body>
+</html>

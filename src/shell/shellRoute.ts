@@ -1,0 +1,681 @@
+/**
+ * shellRoute.ts — WHERE THE APP IS, AND WHERE IT CAN GO FROM THERE.
+ *
+ * ===========================================================================
+ * THE GAP THIS EXISTS TO CLOSE
+ * ===========================================================================
+ * Every piece of the loop was built and tested, and the loop was still not
+ * playable: `App.tsx` routed on query strings alone, so `MeetScreen` was
+ * reachable only by typing `?meet=` into a browser. Nothing under `src/session`
+ * imported `src/meet`, nothing under `src/meet` imported `src/session`, and a
+ * player on a phone could not get from a daily session to a meet at all. Five
+ * rounds of meet-day work — a hall, sound, haptics, choreography, attempt
+ * selection, judging, bomb-out, recap, result card — sat behind a debug URL.
+ *
+ * The join is a ROUTE, and this module is it: which surface is on screen, why,
+ * and which surfaces a player can reach from it WITHOUT a debug URL. That last
+ * clause is the whole point, and `playerReachableFrom` and `pathBetween` below
+ * exist so a test can assert reachability rather than assert that a component
+ * exists. A check that only says "MeetScreen is imported somewhere" would have
+ * passed on the broken tree.
+ *
+ * ===========================================================================
+ * PURE
+ * ===========================================================================
+ * Zero React, zero I/O, no `window`. The caller hands in a `location.search`
+ * string — or `null`, which is what a native build has, where there is no URL
+ * and every debug branch below is correctly dead.
+ *
+ * ===========================================================================
+ * WHAT THIS DELIBERATELY IS NOT
+ * ===========================================================================
+ * It is not the Career calendar. GDD §6.1 enters a meet by selecting one from a
+ * calendar of local -> regional -> nationals -> worlds meets, gated by
+ * qualifying totals — and as of Sprint 1c that is how the graph reads: the
+ * paragraph that stood here described "ONE ungated door to the ONE local meet"
+ * and predicted its own deletion, and `enter-meet` from the calendar is that
+ * prediction landing. The calendar applies the qualifying-total gate through
+ * the server's verdicts, and this module's job is unchanged: it still only
+ * says which surface is up, and which MEET was entered travels beside the
+ * route in `AppShell`'s state, not in here.
+ *
+ * It is also not progression. The shell routes and renders; every mutation to
+ * Total, e1RM, streak state or a meet result goes through the server bodies in
+ * `sessionServer.ts` / `meetServer.ts` exactly as it did before, and nothing in
+ * this file or the shell above it writes one. In particular the shell never
+ * surfaces a Total: GDD §3.2 and §6.4 put Total on meet day and no other day,
+ * so a Total in the app's chrome — where it would be visible during a training
+ * session — is a refusal condition, not a nice-to-have.
+ */
+
+import {
+  isLiveMeetRequest,
+  meetPreviewFrom,
+  previewServerRecord,
+  previewStateFor,
+  showsCard,
+  holdWalkoutAtMs,
+} from '../game/meetPreview';
+import { replayRequestFrom } from '../lift/replayRoute';
+import { localSessionServer } from '../session/localSessionServer';
+import { previewFrameFor, sessionPreviewFrom } from '../session/sessionPreview';
+import type { MeetServerPort } from '../game/meetClient';
+import type { MeetDayPhaseId, MeetDayState } from '../game/meetDay';
+import type { ReplayRequest } from '../lift/liftReplay';
+import type { SessionPhase } from '../game/session';
+import type { SessionPreviewFrame } from '../session/useSession';
+import { SHELL_NAV } from './shellTuning';
+import type { EmpirePhase } from './shellTuning';
+import type { CareerSurfacePhase } from '../meet/careerSurface';
+import type { LifterSurfacePhase } from '../meet/lifterSurface';
+
+// ---------------------------------------------------------------------------
+// Surfaces
+// ---------------------------------------------------------------------------
+
+/**
+ * The surfaces the shell can put on screen.
+ *
+ * `replay` is the scripted single rep the lift-mechanic harness photographs. It
+ * is deliberately NOT player-reachable — it is a debug surface and appears in
+ * `playerReachableFrom` nowhere.
+ *
+ * `empire` is GDD §5's Gym Empire floor. Player-reachable from the daily
+ * session; it does not pay into `progression.ts`'s pooled wallet in this slice.
+ *
+ * `career` is GDD §2.1's federation chooser and GDD §6.1's calendar (Sprint
+ * 1b). Player-reachable from the daily session. The one write it can ask for
+ * is `choose-federation`, and it has no debug query string — the only way
+ * onto it is the player's own.
+ */
+export type ShellSurface = 'session' | 'meet' | 'replay' | 'empire' | 'career' | 'lifter';
+
+export const SHELL_SURFACES = Object.freeze([
+  'session',
+  'meet',
+  'replay',
+  'empire',
+  'career',
+  'lifter',
+] as const satisfies readonly ShellSurface[]);
+
+/**
+ * ===========================================================================
+ * THE SURFACES THE SHELL KEEPS MOUNTED WHILE THE PLAYER IS SOMEWHERE ELSE
+ * ===========================================================================
+ * THE DEFECT THIS CLOSES, MEASURED ON THE PLAYED ARM WITH NO QUERY STRING:
+ * open the app, answer the three readiness questions, arrive at GDD §3.2's
+ * briefing, press GYM EMPIRE, press BACK TO TRAINING — and land on the CHECK-IN
+ * with all three answers blank. `AppShell` picked one surface out of a ternary,
+ * so `SessionScreen` un-mounted and the answers, which are client state that
+ * never reached a server, went with it. Photographed at
+ * `.gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png` and the
+ * frame that used to be `18-briefing-round-trip-lands-on-the-check-in.png`. The
+ * `18-` shot is now `-lands-back-on-the-briefing.png`, and `shootBeat` holds
+ * each file to the beat its own name claims, so the rename cannot be cosmetic.
+ *
+ * A player's session is not a thing a side trip may spend. So the two surfaces
+ * of that round trip are kept MOUNTED across it and whichever one is not being
+ * looked at is hidden — `display: 'none'`, which nothing lays out and nothing
+ * paints, and which Playwright's `isVisible()` reports as not visible, so every
+ * "X is no longer on screen" check in `tools/verify-shell-route.mjs` still means
+ * what it said before.
+ *
+ * ===========================================================================
+ * WHY MEET IS NOT ON THIS LIST, WHICH IS A DECISION AND NOT AN OVERSIGHT
+ * ===========================================================================
+ * The same discard happens across the meet round trip and is deliberately NOT
+ * fixed here. Meet day is a whole mode with a server round trip inside it, and
+ * `appServer.ts` exists precisely so the daily session can re-derive "already
+ * trained today" from the server after it un-mounts. Keeping the session
+ * mounted under a meet would change what a player sees when a meet ends — the
+ * beat they left rather than the day re-read — which is a GDD §3.2 question
+ * with graded browser checks on it, and GDD §11's 2026-08-14 ruling authorised
+ * the EMPIRE round trip specifically. Written down here rather than left to be
+ * rediscovered as a hole.
+ *
+ * `replay` is a debug harness surface and is not player-reachable at all.
+ *
+ * ===========================================================================
+ * CAREER IS ON THE LIST, AND THAT IS A SPRINT 1b DECISION RATHER THAN A RULING
+ * ===========================================================================
+ * GDD §11's 2026-08-14 ruling authorised the EMPIRE round trip by name; no
+ * ruling names Career, so this is the builder's call and is written down as
+ * one. The argument is the measured defect at the top of this comment, applied
+ * unchanged: a glance at the calendar mid-check-in is exactly "a side trip",
+ * and a side trip may not spend the player's session. The meet exception does
+ * not transfer — a meet ENDS somewhere and the session must re-derive the day
+ * when it does; nothing on the Career surface changes what the session should
+ * show. The cost persistence usually carries (a mounted screen going stale
+ * against the row) is paid in `useCareer`, which re-reads the row every time
+ * the surface becomes active.
+ */
+export const PERSISTENT_SURFACES = Object.freeze([
+  'session',
+  'empire',
+  'career',
+  'lifter',
+] as const satisfies readonly ShellSurface[]);
+
+/** Does the shell keep this surface mounted while another one is on screen? */
+export function isPersistentSurface(surface: ShellSurface): boolean {
+  return (PERSISTENT_SURFACES as readonly ShellSurface[]).includes(surface);
+}
+
+/**
+ * Must the shell forget this surface's last reported beat when arriving on it?
+ *
+ * THE SHELL FORGETS THE DESTINATION'S BEAT ON EVERY NAVIGATION, because a
+ * screen reports its beat in an effect that lands a commit AFTER the route
+ * changes — so a stale beat from a previous visit is what the chrome gate would
+ * read for one frame, and a meet opened after a previous one ended gets a "BACK
+ * TO TRAINING" flash over its weigh-in.
+ *
+ * That argument is about a surface that RE-MOUNTS. It is exactly backwards for
+ * one that never went away: its beat is not stale, it is CURRENT, and
+ * forgetting it takes the chrome off a live screen which has no reason to
+ * report again. The player lands back on their briefing with no way to anywhere.
+ *
+ * So the rule is: forget the beat unless the surface both persists AND has no
+ * way to re-report. `EmpireScreen` re-reports (its `active` prop is in the
+ * effect's dependency list), so Empire is forgotten like any other surface.
+ * `SessionScreen` does not, so the daily session is not — and
+ * `shellWiring.test.ts` pins that pairing in both directions rather than
+ * leaving this paragraph to be believed.
+ */
+export function forgetsBeatOnArrival(surface: ShellSurface): boolean {
+  return surface !== 'session';
+}
+
+/** Why the shell is on this surface. */
+export type ShellSource =
+  /** What the app opens on with no URL at all (GDD §3.2: the daily session). */
+  | 'default'
+  /** The player navigated here, in-app, with a finger. */
+  | 'player'
+  /** A debug query string pinned it. The capture harness, and nothing else. */
+  | 'debug';
+
+export interface ShellRoute {
+  readonly surface: ShellSurface;
+  readonly source: ShellSource;
+}
+
+/**
+ * What the app opens on.
+ *
+ * GDD §3.2 and §12.2: the daily session, with no splash and no home screen in
+ * front of it, because §12.2 measures the retention core on time-to-first-input
+ * and every screen before the first question answers nothing.
+ */
+export const DEFAULT_ROUTE: ShellRoute = Object.freeze({ surface: 'session', source: 'default' });
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything a player can ask the shell to do.
+ *
+ * Six intents: the daily session ↔ Gym Empire round trip, the daily session ↔
+ * Career round trip, and meet day entered FROM the Career calendar and left
+ * back to the session. `LicensingScreen` stays on its own entry point (see the
+ * comment that used to claim only two intents — that count is stale; the
+ * licensing carve-out is not).
+ *
+ * `open-meet` IS GONE, AND ITS ABSENCE IS SPRINT 1c'S POINT. That intent was
+ * the session's one ungated door to the one local meet — GDD §6.1's TODO in a
+ * route edge. A meet is now entered from the calendar (`enter-meet`, fired by
+ * an enterable row's own control), so which meet a player lifts is decided
+ * where the verdicts are drawn, and the session's chrome offers Career and
+ * Empire, not a meet with no calendar behind it.
+ */
+export type ShellIntent =
+  | 'enter-meet'
+  | 'leave-meet'
+  | 'open-empire'
+  | 'leave-empire'
+  | 'open-career'
+  | 'leave-career'
+  | 'open-lifter'
+  | 'leave-lifter';
+
+export const SHELL_INTENTS = Object.freeze([
+  'enter-meet',
+  'leave-meet',
+  'open-empire',
+  'leave-empire',
+  'open-career',
+  'leave-career',
+  'open-lifter',
+  'leave-lifter',
+] as const satisfies readonly ShellIntent[]);
+
+/**
+ * THE ROUTE GRAPH. One edge per intent, per surface it applies from.
+ *
+ * `career --enter-meet--> meet` is Sprint 1c's edge: GDD §6.1's "select a meet
+ * from the Career calendar", replacing `session --open-meet--> meet` — which
+ * was the edge that first made GDD §6 reachable on a device at all, and then
+ * became the ungated door once the calendar existed to gate it. Meet day is
+ * now two intents from the session (`open-career`, then a row's `enter-meet`),
+ * and `pathBetween('session', 'meet')` still answers, which is the reachability
+ * this graph exists to keep honest.
+ * `meet --leave-meet--> session` is the way back, which GDD §6.5's recap and
+ * §6.3's bomb-out both need and which used to be `window.location.search = ''`
+ * — a full page reload, on web only, doing nothing at all on a phone.
+ * `session --open-empire--> empire` / `empire --leave-empire--> session` are
+ * Session C's first Gym Empire shell slice (GDD §5).
+ */
+export function navigate(route: ShellRoute, intent: ShellIntent): ShellRoute {
+  if (intent === 'enter-meet' && route.surface === 'career') {
+    return { surface: 'meet', source: 'player' };
+  }
+  if (intent === 'leave-meet' && route.surface === 'meet') {
+    return { surface: 'session', source: 'player' };
+  }
+  if (intent === 'open-empire' && route.surface === 'session') {
+    return { surface: 'empire', source: 'player' };
+  }
+  if (intent === 'leave-empire' && route.surface === 'empire') {
+    return { surface: 'session', source: 'player' };
+  }
+  // `session --open-career--> career` / `career --leave-career--> session` is
+  // Sprint 1b's Career round trip (GDD §2.1, §6.1): the same shape as Empire's.
+  if (intent === 'open-career' && route.surface === 'session') {
+    return { surface: 'career', source: 'player' };
+  }
+  if (intent === 'leave-career' && route.surface === 'career') {
+    return { surface: 'session', source: 'player' };
+  }
+  if (intent === 'open-lifter' && route.surface === 'session') {
+    return { surface: 'lifter', source: 'player' };
+  }
+  if (intent === 'leave-lifter' && route.surface === 'lifter') {
+    return { surface: 'session', source: 'player' };
+  }
+  return route;
+}
+
+/**
+ * Every surface a player can reach from `from` using only in-app navigation.
+ *
+ * Breadth-first over `navigate`, so it cannot drift from the graph: delete an
+ * edge in `navigate` and this shrinks. Includes `from` itself — you are already
+ * there. Sorted, so a test can compare it without ordering noise.
+ */
+export function playerReachableFrom(from: ShellSurface): readonly ShellSurface[] {
+  const seen = new Set<ShellSurface>([from]);
+  const queue: ShellSurface[] = [from];
+  while (queue.length > 0) {
+    const surface = queue.shift() as ShellSurface;
+    for (const intent of SHELL_INTENTS) {
+      const next = navigate({ surface, source: 'player' }, intent).surface;
+      if (seen.has(next)) continue;
+      seen.add(next);
+      queue.push(next);
+    }
+  }
+  return [...seen].sort();
+}
+
+/**
+ * The shortest sequence of intents that gets a player from `from` to `to`, or
+ * `null` when no sequence does.
+ *
+ * THIS IS THE FUNCTION THE REACHABILITY TESTS BITE ON. `pathBetween('session',
+ * 'meet')` returning null means a player holding a phone cannot get to meet
+ * day, whatever else is green — which is precisely the state the repository was
+ * in while 2128 tests passed.
+ */
+export function pathBetween(from: ShellSurface, to: ShellSurface): readonly ShellIntent[] | null {
+  if (from === to) return [];
+  const cameBy = new Map<ShellSurface, readonly ShellIntent[]>([[from, []]]);
+  const queue: ShellSurface[] = [from];
+  while (queue.length > 0) {
+    const surface = queue.shift() as ShellSurface;
+    const soFar = cameBy.get(surface) ?? [];
+    for (const intent of SHELL_INTENTS) {
+      const next = navigate({ surface, source: 'player' }, intent).surface;
+      if (cameBy.has(next)) continue;
+      const path = [...soFar, intent];
+      if (next === to) return path;
+      cameBy.set(next, path);
+      queue.push(next);
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// The chrome gate
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether a GDD §7.2 cut-in is on screen over the current surface.
+ *
+ * A union rather than a boolean because it is the third argument of a gate and
+ * a bare `true` at a call site says nothing about what is true.
+ */
+export type CutInPresence = 'live' | 'none';
+
+/**
+ * The affordance the shell should draw over the current surface, or `null` for
+ * none.
+ *
+ * The shell owns this rather than the screens, for the reason `App.tsx` has
+ * always given: the way into and out of a mode is a route, and the screens are
+ * renderers. It is gated on the surface's own beat (`phase`), because a
+ * navigation control drawn over a live set is a mis-tap on the one beat where a
+ * mis-tap costs a rep. `SHELL_NAV` holds the two phase lists and the comment
+ * arguing them.
+ *
+ * `phase` is `null` when the surface has not reported one yet, or when the
+ * surface has no phases (the replay harness). No phase, no chrome.
+ *
+ * ---------------------------------------------------------------------------
+ * AND NO CHROME OVER A CUT-IN, WHICH IS THE SAME RULE
+ * ---------------------------------------------------------------------------
+ * GDD §7.2 requires a cut-in to be "always skippable — tap to dismiss", and the
+ * whole screen is the dismiss target. `AppShell` draws the pill as a SIBLING of
+ * the surface, after it, so an overlay mounted inside the surface paints
+ * UNDERNEATH the pill: a tap that lands on the pill navigates to meet day
+ * instead of dismissing the interrupt. Measured on rendered pixels by
+ * `tools/capture-cutin.mjs`, which hit-tested the pill's own centre through a
+ * live cut-in and found the pill.
+ *
+ * The overlay cannot fix it from its side — it would have to give the entire
+ * surface a stacking order that buried the pill permanently — so the fix is
+ * here, and it is the gate this function already applies over a live set. Same
+ * argument, same shape: no chrome on a beat where a mis-tap costs the player
+ * something.
+ */
+export function shellAffordanceFor(
+  route: ShellRoute,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | LifterSurfacePhase | null,
+  cutIn: CutInPresence = 'none',
+): ShellIntent | null {
+  if (cutIn === 'live') return null;
+  if (phase === null) return null;
+  // The session arm is GONE with `open-meet` (Sprint 1c): the session's chrome
+  // no longer offers a meet, because the Career calendar is the one door and
+  // the Career pill is how a player reaches it. What this function still owns
+  // is the way BACK — the recap's return to training.
+  if (route.surface === 'meet') {
+    return (SHELL_NAV.MEET_PHASES as readonly string[]).includes(phase) ? 'leave-meet' : null;
+  }
+  return null;
+}
+
+/**
+ * The Gym Empire affordance, parallel to `shellAffordanceFor`.
+ *
+ * Kept as a second function rather than widening the meet/session return into
+ * a list, so the existing meet-day gate stays a single typed answer and the
+ * Empire pill is an additive edge. Same cut-in rule, same "no phase, no
+ * chrome" rule, same SESSION_PHASES list for the way in.
+ */
+export function shellEmpireAffordanceFor(
+  route: ShellRoute,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | LifterSurfacePhase | null,
+  cutIn: CutInPresence = 'none',
+): ShellIntent | null {
+  if (cutIn === 'live') return null;
+  if (phase === null) return null;
+  if (route.surface === 'session') {
+    return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-empire' : null;
+  }
+  if (route.surface === 'empire') {
+    return (SHELL_NAV.EMPIRE_PHASES as readonly string[]).includes(phase) ? 'leave-empire' : null;
+  }
+  return null;
+}
+
+/**
+ * The Career affordance, parallel to `shellEmpireAffordanceFor` and for the
+ * same reason it is a third function rather than a widened return: each
+ * surface's pill is an additive edge and the existing gates stay single typed
+ * answers. Same cut-in rule, same "no phase, no chrome" rule, same
+ * SESSION_PHASES list for the way in; `SHELL_NAV.CAREER_PHASES` — both of the
+ * surface's beats — for the way back, because neither Career beat is a
+ * mechanic a mis-tap could cost anything on.
+ */
+export function shellCareerAffordanceFor(
+  route: ShellRoute,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | LifterSurfacePhase | null,
+  cutIn: CutInPresence = 'none',
+): ShellIntent | null {
+  if (cutIn === 'live') return null;
+  if (phase === null) return null;
+  if (route.surface === 'session') {
+    return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-career' : null;
+  }
+  if (route.surface === 'career') {
+    return (SHELL_NAV.CAREER_PHASES as readonly string[]).includes(phase) ? 'leave-career' : null;
+  }
+  return null;
+}
+
+/**
+ * The My Lifter affordance. Creating has no leave chrome — identity is
+ * required before the rest of the app. The card (and its edit beats) carry
+ * the way back.
+ */
+export function shellLifterAffordanceFor(
+  route: ShellRoute,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | LifterSurfacePhase | null,
+  cutIn: CutInPresence = 'none',
+): ShellIntent | null {
+  if (cutIn === 'live') return null;
+  if (phase === null) return null;
+  if (route.surface === 'session') {
+    return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-lifter' : null;
+  }
+  if (route.surface === 'lifter') {
+    return (SHELL_NAV.LIFTER_PHASES as readonly string[]).includes(phase) ? 'leave-lifter' : null;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// The debug entry points
+// ---------------------------------------------------------------------------
+//
+// THESE ARE LOAD-BEARING FOR THE RUN'S EVIDENCE, NOT LEFTOVERS. Four tools
+// drive the app through them and there is no other way to photograph a beat a
+// wall clock cannot hit:
+//
+//   ?replay=<load>&moment=<id>   tools/capture-lift.mjs, verify-lift-shots.mjs
+//   ?session=<moment>            tools/capture-session.mjs,
+//                                verify-session-boundary.mjs
+//   ?meet=<moment>               tools/capture-meet.mjs
+//   ?meet=live                   tools/capture-meet.mjs --live
+//
+// A player never reaches one: `entryRoute` is the only reader, it runs once at
+// launch, and no `ShellIntent` produces a `debug` route.
+
+/** The frozen meet beat a query string asks for, and how to draw it. */
+export interface MeetEntry {
+  /** The scripted state, or `undefined` for `?meet=live` — a PLAYED meet. */
+  readonly state: MeetDayState | undefined;
+  /** Open straight onto GDD §6.5's shareable card. */
+  readonly card: boolean;
+  /** Hold the walk-out's choreography at this instant, or `null` to let it run. */
+  readonly holdWalkoutAtMs: number | null;
+  /**
+   * The stand-in server this scripted lifter's history lives in, or `undefined`
+   * for a meet that is PLAYED and therefore uses the app's own connection.
+   *
+   * PRESENT EXACTLY WHEN `state` IS, and `shellRoute.test.ts` pins that
+   * biconditional over every moment `MEET_MOMENTS` declares plus `?meet=live`.
+   * That equivalence is the replacement for `useMeetDay`'s old
+   * `frozen ? previewServerRecord() : newServerRecord(...)` — one ternary that
+   * was doing two jobs, whose live arm handed the played app a fabricated lifter
+   * for ever. A boolean and a record that had to agree are now one value that
+   * cannot disagree with itself.
+   */
+  readonly serverPort: MeetServerPort | undefined;
+}
+
+/**
+ * The scripted lifter's stand-in server. DEBUG ONLY.
+ *
+ * ===========================================================================
+ * WHY THE PREVIEW NEEDS A SERVER OF ITS OWN AT ALL
+ * ===========================================================================
+ * `previewContext()` describes a lifter with a competition history — a 605 kg
+ * best total and per-lift bests. The app's real connection describes whoever is
+ * actually playing, which in a capture run is a brand-new account. Photograph
+ * the recap against the real connection and it reads FIRST TOTAL, the PR branch
+ * is unphotographable, and `04-recap-with-way-back.png` stops being a picture of
+ * what it claims to be.
+ *
+ * ===========================================================================
+ * AND WHY IT CANNOT LEAK ONTO THE PLAYED PATH
+ * ===========================================================================
+ * Four things, in decreasing order of how much they would have to be broken:
+ *
+ *   1. It is only ever attached to an entry that has a scripted `state` — the
+ *      `?meet=live` arm below leaves it `undefined` — and that biconditional is
+ *      pinned exhaustively.
+ *   2. An entry only reaches `MeetScreen` through `frozenMeetFor`, which returns
+ *      `undefined` unless `route.source === 'debug'`. A player leaving a debug
+ *      meet and re-entering from the session gets a LIVE meet; that was already
+ *      load-bearing and already pinned.
+ *   3. `useMeetDay` cannot fabricate a substitute if it is handed nothing,
+ *      because `serverPort` is a required parameter with no default, and
+ *      `ServerRecord`/`newServerRecord` are names `useMeetDay.test.ts` forbids
+ *      it. There is no fallback to fall back to.
+ *   4. `tools/verify-shell-route.mjs` plays a real session with a mouse on the
+ *      shipped route — no query string — and asserts meet day's opener is
+ *      derived from the e1RM that session banked. That is the instrument that
+ *      would have caught the original defect, and it now exists.
+ *
+ * A REAL `localSessionServer`, not a stub: same closure, same latency, same
+ * `applyMeetResult`. Only the row it starts from differs, which is why the
+ * preview's recap has a real total on it.
+ *
+ * @guarantee a-preview-server-cannot-reach-a-played-meet
+ */
+function previewMeetPort(): MeetServerPort {
+  return localSessionServer({ record: previewServerRecord() });
+}
+
+/**
+ * A meet pinned by the query string, or `undefined`.
+ *
+ * A frame is a scripted `MeetDayState` AND how to draw it AND the server its
+ * lifter exists in, because two of the walk-out beats are the same state
+ * photographed at different instants and all of them are a lifter the app's own
+ * connection has never heard of.
+ */
+export function meetEntryFrom(search: string | null): MeetEntry | undefined {
+  if (search === null) return undefined;
+  if (isLiveMeetRequest(search)) {
+    // A played meet: no preview state, so the loop builds its own and every
+    // beat timer runs — including the walk-out's, which is why the live shot is
+    // the one that shows the choreography moving on its own.
+    //
+    // AND NO PREVIEW SERVER, for the same reason. `?meet=live` is the debug
+    // route to the PLAYED loop, so it plays against the app's real connection
+    // like any other meet. It is the one debug entry that must not get one.
+    return { state: undefined, card: false, holdWalkoutAtMs: null, serverPort: undefined };
+  }
+  const request = meetPreviewFrom(search);
+  if (request === null) return undefined;
+  return {
+    state: previewStateFor(request),
+    card: showsCard(request.moment),
+    // Null for every beat but the two mid-motion walk-out ones.
+    holdWalkoutAtMs: holdWalkoutAtMs(request.moment),
+    serverPort: previewMeetPort(),
+  };
+}
+
+/**
+ * A session beat pinned by the query string, or `undefined`.
+ *
+ * A frame is a scripted `SessionState` AND the `ProgressionCache` its numbers
+ * are read out of — the close-out prints what the boundary says, so a preview
+ * without a cache would photograph the wrong figures.
+ */
+export function sessionEntryFrom(search: string | null): SessionPreviewFrame | undefined {
+  if (search === null) return undefined;
+  const request = sessionPreviewFrom(search);
+  return request === null ? undefined : previewFrameFor(request);
+}
+
+/** A scripted rep pinned by the query string, or `undefined`. */
+export function replayEntryFrom(search: string | null): ReplayRequest | undefined {
+  if (search === null) return undefined;
+  return replayRequestFrom(search) ?? undefined;
+}
+
+/**
+ * Everything a launch URL asks for: which surface, and the frozen frame to draw
+ * on it.
+ *
+ * ONE PASS, ONE ANSWER. The route and the frame are decided together rather
+ * than by two independent parses, so they cannot disagree about which surface a
+ * query string meant — and the meet preview, which plays a whole scripted meet
+ * through `stepMeetDay` to build its state, is built once rather than once per
+ * question asked about it.
+ */
+export interface ShellEntry {
+  readonly route: ShellRoute;
+  readonly meet: MeetEntry | undefined;
+  readonly session: SessionPreviewFrame | undefined;
+  readonly replay: ReplayRequest | undefined;
+}
+
+const NO_FRAMES = Object.freeze({ meet: undefined, session: undefined, replay: undefined });
+
+/**
+ * Resolve a launch URL.
+ *
+ * PRECEDENCE IS MEET, THEN REPLAY, THEN SESSION — the order `App.tsx` has
+ * always used, restated here because the four harness tools depend on it.
+ */
+export function resolveEntry(search: string | null): ShellEntry {
+  const meet = meetEntryFrom(search);
+  if (meet !== undefined) {
+    return { ...NO_FRAMES, route: { surface: 'meet', source: 'debug' }, meet };
+  }
+  const replay = replayEntryFrom(search);
+  if (replay !== undefined) {
+    return { ...NO_FRAMES, route: { surface: 'replay', source: 'debug' }, replay };
+  }
+  const session = sessionEntryFrom(search);
+  if (session !== undefined) {
+    return { ...NO_FRAMES, route: { surface: 'session', source: 'debug' }, session };
+  }
+  return { ...NO_FRAMES, route: DEFAULT_ROUTE };
+}
+
+/** The route a launch URL opens on. */
+export function entryRoute(search: string | null): ShellRoute {
+  return resolveEntry(search).route;
+}
+
+/**
+ * The frozen meet frame to draw, or `undefined` for a meet the player is
+ * actually playing.
+ *
+ * THE `source` CHECK IS LOAD-BEARING. A player who leaves a debug meet and then
+ * opens meet day again from the session must get a LIVE meet, not the scripted
+ * beat the URL still names. Without this the second meet would be the
+ * screenshot, frozen, with its timers stopped.
+ */
+export function frozenMeetFor(entry: ShellEntry, route: ShellRoute): MeetEntry | undefined {
+  if (route.surface !== 'meet' || route.source !== 'debug') return undefined;
+  return entry.meet;
+}
+
+/** The frozen session frame to draw, or `undefined` for a session being played. */
+export function frozenSessionFor(
+  entry: ShellEntry,
+  route: ShellRoute,
+): SessionPreviewFrame | undefined {
+  if (route.surface !== 'session' || route.source !== 'debug') return undefined;
+  return entry.session;
+}

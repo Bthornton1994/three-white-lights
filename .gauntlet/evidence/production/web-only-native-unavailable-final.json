@@ -1,0 +1,127 @@
+{
+  "observedAt": "2026-10-01T07:29:26.846549+00:00",
+  "isolatedRoot": "/tmp/twl-browser-only-20261001-v831",
+  "nativeDependenciesPresent": false,
+  "absenceProbe": {
+    "nativeNodeModulesExists": false,
+    "resolutions": [
+      {
+        "anchor": "package.json",
+        "name": "expo/tsconfig.base",
+        "error": "MODULE_NOT_FOUND"
+      },
+      {
+        "anchor": "package.json",
+        "name": "expo/package.json",
+        "error": "MODULE_NOT_FOUND"
+      },
+      {
+        "anchor": "package.json",
+        "name": "react-native/package.json",
+        "error": "MODULE_NOT_FOUND"
+      },
+      {
+        "anchor": "web/package.json",
+        "name": "expo/tsconfig.base",
+        "error": "MODULE_NOT_FOUND"
+      },
+      {
+        "anchor": "web/package.json",
+        "name": "expo/package.json",
+        "error": "MODULE_NOT_FOUND"
+      },
+      {
+        "anchor": "web/package.json",
+        "name": "react-native/package.json",
+        "error": "MODULE_NOT_FOUND"
+      },
+      {
+        "anchor": "src/session/useGameSession.ts",
+        "name": "expo/tsconfig.base",
+        "error": "MODULE_NOT_FOUND"
+      },
+      {
+        "anchor": "src/session/useGameSession.ts",
+        "name": "expo/package.json",
+        "error": "MODULE_NOT_FOUND"
+      },
+      {
+        "anchor": "src/session/useGameSession.ts",
+        "name": "react-native/package.json",
+        "error": "MODULE_NOT_FOUND"
+      }
+    ]
+  },
+  "sourceHashes": {
+    "web/package.json": "b21f904aa04746e9d7b305fd9680adcb00a1d398d3c7768350904ed5086450f9",
+    "web/package-lock.json": "24e63af6f18565ecea3dadcc7a2248ac453f96cc98b6ed6119601aeab0e81c5a",
+    "web/vite.config.ts": "5ee66501ad35ba2ef502c4a94371c450b32e7ab090498a4b78d974c7239f137d",
+    "web/vitest.config.ts": "8347e2e36eb916d6c083aa2c586b578775d02f69f36f4e225e62e8231b3cf44a",
+    "web/tsconfig.json": "bb96abe74056c710b0ca74752db45407b2945fe57efa82044d9785d7318ca151",
+    "web/tsconfig.test.json": "05ba913728d45024833f4576b1307ad742f76106eb1678ed74285cebb2b5af49"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/web-only-native-unavailable-final-0.txt",
+      "logSha256": "e6282656c2e31d00994658c62c4912a593a1c03bca6ab069296df416156b4a7f"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "typecheck:test"
+      ],
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/web-only-native-unavailable-final-1.txt",
+      "logSha256": "ee05804f4b369f1ffc467ebabfcdc2ac041d0bfcff6a18452527035cf6a782de"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "test:domain"
+      ],
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/web-only-native-unavailable-final-2.txt",
+      "logSha256": "a5ee8a16146099f78f46b8d8724b8dbe9efc4809d16f2b75d9099dcfd4b1e0d8"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "test:unit:web"
+      ],
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/web-only-native-unavailable-final-3.txt",
+      "logSha256": "e0e6cff55a89e4c854a187fc1301aea4f1ef818f9a751f4c6e9cb3666ac1c12f"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": ".gauntlet/evidence/production/web-only-native-unavailable-final-4.txt",
+      "logSha256": "1d6fd9c639321db1b3ba310ddd295ab3eb9f0b518326f2fe4f85324dc82e1b41"
+    }
+  ],
+  "complete": true,
+  "limit": "Browser-only install/config/build proof; no native-suite, live service, visual quality, or physical-device claim."
+}

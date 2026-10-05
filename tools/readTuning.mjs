@@ -1,0 +1,246 @@
+/**
+ * readTuning.mjs — READ A TUNING VALUE OUT OF ITS SOURCE, RATHER THAN TYPE IT
+ * AGAIN INTO A TOOL.
+ *
+ * ===========================================================================
+ * WHY THIS EXISTS, AND WHY IT IS NOT THE OPPOSITE OF `capture-meet.mjs`'S RULE
+ * ===========================================================================
+ * Two different things get restated in this directory and only one of them
+ * should be.
+ *
+ *   A LIST OF WHAT THE APP CONTAINS — the beat names, the four firing moments,
+ *   the line each one prints — is restated ON PURPOSE. Those tools are a second,
+ *   independent statement of what the piece is supposed to hold, and a capture
+ *   that agreed with a broken module by construction would be worth nothing.
+ *   Nothing here changes that.
+ *
+ *   A NUMBER A CHECK COMPARES AGAINST is a different animal. It is not a second
+ *   opinion about anything; it is the same fact, typed twice, and the second
+ *   copy silently stops being true. `tools/capture-cutin.mjs` held
+ *   `AUTO_DISMISS_MS = 1720` by hand and asked "did the tap beat the hold?"
+ *   against it — so on a build whose real hold was 10 ms the question would
+ *   still have been answered yes. The bound was measured against a number the
+ *   app had stopped using.
+ *
+ * So: a number a check STEERS BY or COMPARES AGAINST is read from source here.
+ * A name a check IDENTIFIES the app by stays transcribed in the tool.
+ *
+ * ===========================================================================
+ * A PARSER THAT HAS STOPPED MATCHING AGREES WITH EVERY FILE
+ * ===========================================================================
+ * Every reader below returns `null` when it finds nothing, and `null` is
+ * indistinguishable from "the value is missing" at the call site — which is how
+ * a check that reads a constant becomes a check that reads nothing. So every
+ * consumer must call `parserSelfTest()` and FAIL on it, and must fail on a
+ * `null` read rather than substituting a default. `SELF_TEST_FIXTURE` is the
+ * source text the readers are known to handle, including the two shapes that
+ * have caught a regression before: a property whose name is a SUFFIX of another
+ * one, and the last entry of an inline block, which has no trailing comma.
+ *
+ * These are the same three readers `tools/verify-shell-route.mjs` grew inline.
+ * That file is not changed here — it is another piece's instrument and its
+ * copies are cross-checked against the source by a check of its own — but new
+ * readers belong in one place rather than a fourth.
+ */
+
+/** The number a `NAME: <number>,` property is given anywhere in `source`. */
+export function numberInSource(source, name) {
+  const found = new RegExp(`(?:^|[^A-Za-z0-9_$])${name}\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)\\s*[,}\\)]`).exec(
+    source,
+  );
+  return found === null ? null : Number(found[1]);
+}
+
+/**
+ * The number a property called `key` is given INSIDE the braces of the named
+ * block, or `null`.
+ *
+ * `numberInSource` answers with the first match in the whole file, which is
+ * right for a `SCREAMING_CASE` tuning property and useless for `'bomb-out'`,
+ * which appears in half a dozen unrelated tables.
+ */
+export function numberInBlock(source, blockName, key) {
+  const at = source.search(new RegExp(`(?:^|[^A-Za-z0-9_$])${blockName}\\s*[:=]`, 'm'));
+  if (at < 0) return null;
+  const open = source.indexOf('{', at);
+  if (open < 0) return null;
+  let depth = 0;
+  for (let i = open; i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1;
+    else if (source[i] === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // TERMINATED BY `,` OR BY A CLOSING BRACE. The last entry of an inline
+        // block has no comma after it, and requiring one is what made an
+        // earlier copy of this reader answer `null` for a real value.
+        const found = new RegExp(
+          `(?:^|[^A-Za-z0-9_$])'?${escaped}'?\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)\\s*[,}\\)]`,
+        ).exec(source.slice(open, i + 1));
+        return found === null ? null : Number(found[1]);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * The braces of the named block, verbatim, or `null`.
+ *
+ * WHAT IT IS FOR, AND IT IS THE ONE SHAPE `numberInBlock` CANNOT REACH: a block
+ * nested inside another whose key is a common word. `DESCENT_DEPTH_PER_TICK`
+ * holds a `bench` sub-block, and `bench` occurs dozens of times in
+ * `liftTuning.ts` — as a per-kind copy key, as a prompt row, in prose — so
+ * `numberInBlock(source, 'bench', 'LIGHT')` answers about whichever one comes
+ * first in the file, confidently and wrongly. Slicing the outer block first and
+ * asking inside the slice is the fix, and it belongs here rather than inline in
+ * a tool for this file's own stated reason: a fourth copy of a reader is how the
+ * third one stops matching without anybody noticing.
+ *
+ * The brace walk is `numberInBlock`'s own, which is why this is beside it: the
+ * two are one traversal asked for two different things, and a second copy of
+ * the depth counter is exactly the drift this module exists to prevent.
+ */
+export function blockInSource(source, blockName) {
+  const at = source.search(new RegExp(`(?:^|[^A-Za-z0-9_$])${blockName}\\s*[:=]`, 'm'));
+  if (at < 0) return null;
+  const open = source.indexOf('{', at);
+  if (open < 0) return null;
+  let depth = 0;
+  for (let i = open; i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1;
+    else if (source[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(open, i + 1);
+    }
+  }
+  return null;
+}
+
+/** The single-quoted string a `NAME: '<text>',` property is given, or `null`. */
+export function stringInSource(source, name) {
+  const found = new RegExp(`(?:^|[^A-Za-z0-9_$])${name}\\s*:\\s*'((?:[^'\\\\]|\\\\.)*)'`).exec(source);
+  return found === null ? null : found[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+}
+
+/**
+ * The single-quoted string a TOP-LEVEL `const NAME = '<text>'` DECLARATION is
+ * given, or `null`.
+ *
+ * `stringInSource` above reads a PROPERTY, which is the shape every tuning block
+ * is written in, and it answers `null` for a declaration. A module-level id —
+ * the name a diagnostic channel takes on `globalThis`, say — is a declaration.
+ * Here rather than inline in one tool, per this file's own header: a fourth copy
+ * of a reader is how the third one stops matching without anybody noticing.
+ */
+export function constStringInSource(source, name) {
+  const found = new RegExp(
+    `(?:^|[^A-Za-z0-9_$])const\\s+${name}\\s*(?::[^=]*)?=\\s*'((?:[^'\\\\]|\\\\.)*)'`,
+  ).exec(source);
+  return found === null ? null : found[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+}
+
+/**
+ * The number a TOP-LEVEL `const NAME = <number>` DECLARATION is given, or
+ * `null`.
+ *
+ * `numberInSource` above reads a PROPERTY (`NAME: 12,`), which is the shape
+ * every tuning BLOCK is written in, and it answers `null` for a declaration.
+ * `TICK_HZ` is a declaration — `src/art/spriteTuning.ts` exports it as
+ * `export const TICK_HZ = 60;` — and it is the clock every tick-denominated
+ * tuning value in `liftTuning.ts` has to be converted through before a browser
+ * robot holding a wall-clock stopwatch can compare against one.
+ *
+ * Here rather than inline in one tool, per this file's own header: a fourth
+ * copy of a reader is how the third one stops matching without anybody
+ * noticing. Paired with a self-test row BELOW that points it at the property
+ * shape it must NOT answer, the same way the two string readers are.
+ */
+export function numberInDeclaration(source, name) {
+  const found = new RegExp(
+    `(?:^|[^A-Za-z0-9_$])const\\s+${name}\\s*(?::[^=]*)?=\\s*(-?[0-9]+(?:\\.[0-9]+)?)\\s*;`,
+  ).exec(source);
+  return found === null ? null : Number(found[1]);
+}
+
+/**
+ * A source text the readers are KNOWN to handle, with the traps in it.
+ *
+ * `SUB_HOLD_MS` must not answer a question about `HOLD_MS`; `deadlift` has no
+ * trailing comma; `'bomb-out'` is quoted and hyphenated, which is the shape the
+ * cut-in allowance table is written in. `A_CHANNEL` is a DECLARATION and
+ * `A_LINE` is a PROPERTY, so each string reader is also pointed at the shape it
+ * must NOT answer — a reader that matched both would let a tool read a tuning
+ * property when it asked for a channel name and never know. `A_RATE` is the
+ * numeric half of that same pair, for `numberInDeclaration`.
+ */
+export const SELF_TEST_FIXTURE = `
+  SUB_HOLD_MS: 99,
+  HOLD_MS: 1600,
+  ALLOWANCE: Object.freeze({
+    'third-attempt-walkout': 0.5,
+    'bomb-out': 1,
+  }),
+  STARTING: Object.freeze({ squat: 180, deadlift: 220 }),
+  PER_TICK: {
+    squat: { LIGHT: 0.0278, MAXIMAL: 0.0155 },
+    bench: { LIGHT: 0.034, MAXIMAL: 0.019 },
+  },
+  BENCH_ELSEWHERE: { LIGHT: 999, MAXIMAL: 999 },
+  A_LINE: 'High. The hips never got under.',
+  export const A_CHANNEL = '__someGlobal';
+  export const A_RATE = 60;
+`;
+
+/**
+ * Does this module still read the fixture correctly? Returns a list of
+ * complaints; empty means the parser is live.
+ *
+ * A CONSUMER MUST FAIL ON A NON-EMPTY RESULT. The whole hazard of reading a
+ * constant out of source is that a regex which no longer matches reports
+ * `null`, and a `null` treated as "not configured" is a check that has quietly
+ * stopped asking anything.
+ */
+export function parserSelfTest() {
+  const f = SELF_TEST_FIXTURE;
+  const want = [
+    ['numberInSource HOLD_MS', numberInSource(f, 'HOLD_MS'), 1600],
+    ['numberInSource SUB_HOLD_MS', numberInSource(f, 'SUB_HOLD_MS'), 99],
+    ['numberInBlock ALLOWANCE bomb-out', numberInBlock(f, 'ALLOWANCE', 'bomb-out'), 1],
+    ['numberInBlock ALLOWANCE walkout', numberInBlock(f, 'ALLOWANCE', 'third-attempt-walkout'), 0.5],
+    ['numberInBlock STARTING deadlift (no trailing comma)', numberInBlock(f, 'STARTING', 'deadlift'), 220],
+    ['stringInSource A_LINE', stringInSource(f, 'A_LINE'), 'High. The hips never got under.'],
+    ['constStringInSource A_CHANNEL', constStringInSource(f, 'A_CHANNEL'), '__someGlobal'],
+    ['numberInSource on a name that is not there', numberInSource(f, 'NOT_PRESENT_MS'), null],
+    ['stringInSource on a name that is not there', stringInSource(f, 'NOT_PRESENT'), null],
+    ['constStringInSource on a name that is not there', constStringInSource(f, 'NOT_PRESENT'), null],
+    // ...AND EACH STRING READER REFUSES THE OTHER'S SHAPE. Without these two the
+    // pair could collapse into one regex that answered both questions with
+    // whichever it found first, and a tool asking for a channel name would be
+    // handed a line of meet copy.
+    ['stringInSource must not read a declaration', stringInSource(f, 'A_CHANNEL'), null],
+    ['constStringInSource must not read a property', constStringInSource(f, 'A_LINE'), null],
+    ['numberInDeclaration A_RATE', numberInDeclaration(f, 'A_RATE'), 60],
+    ['numberInDeclaration on a name that is not there', numberInDeclaration(f, 'NOT_PRESENT'), null],
+    // ...AND IT MUST NOT ANSWER A PROPERTY, for the reason the pair above does
+    // not answer each other's shape: a tool asking for the clock would
+    // otherwise be handed whichever tuning property happened to be named the
+    // same, with no way to tell.
+    ['numberInDeclaration must not read a property', numberInDeclaration(f, 'HOLD_MS'), null],
+    // ...AND THE NESTED-BLOCK READER, POINTED AT THE TRAP IT EXISTS FOR. The
+    // fixture holds `bench` twice: once inside `PER_TICK` and once at the top
+    // level, EARLIER in neither case by accident — `BENCH_ELSEWHERE` is after
+    // `PER_TICK`, so a reader that slices correctly and a reader that grabs the
+    // first `bench` in the file would agree, and the check would be vacuous.
+    // So the assertion is on the SLICE: `blockInSource` must return the outer
+    // block's own text, and `numberInBlock` inside that slice must answer 0.034
+    // where the same call over the whole fixture answers about `STARTING`.
+    ['blockInSource PER_TICK contains its own bench row', (blockInSource(f, 'PER_TICK') ?? '').includes("bench: { LIGHT: 0.034"), true],
+    ['blockInSource PER_TICK excludes the sibling block', (blockInSource(f, 'PER_TICK') ?? '').includes('BENCH_ELSEWHERE'), false],
+    ['numberInBlock inside the slice', numberInBlock(blockInSource(f, 'PER_TICK') ?? '', 'bench', 'LIGHT'), 0.034],
+    ['blockInSource on a name that is not there', blockInSource(f, 'NOT_PRESENT'), null],
+  ];
+  return want
+    .filter(([, got, expected]) => got !== expected)
+    .map(([what, got, expected]) => `${what}: read ${JSON.stringify(got)}, expected ${JSON.stringify(expected)}`);
+}
