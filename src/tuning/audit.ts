@@ -233,6 +233,13 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'feel',
     why: 'Facility placement, service rates and the named structural and refusal classifications for the GDD §5 gym-management layer.',
   }),
+  'src/facility/scene/sceneTuning.ts': Object.freeze({ role: 'constants', kind: 'feel', why: 'Shared scene camera, light, interpolation, contact and authored motion values.' }),
+  'src/facility/scene/scenePalette.ts': Object.freeze({ role: 'palette', kind: 'colour', why: 'Original Iron and Amber shared world materials.' }),
+  'src/facility/scene/equipmentData.ts': Object.freeze({ role: 'constants', kind: 'data', why: 'Original authored equipment geometry, pivots and contact locations.' }),
+  'src/facility/scene/anatomyData.ts': Object.freeze({ role: 'constants', kind: 'data', why: 'Original authored athletic anatomy and equipment-specific use poses.' }),
+  'src/facility/scene/environmentData.ts': Object.freeze({ role: 'constants', kind: 'data', why: 'Original modular architecture and four-stage room data.' }),
+  'src/facility/native/nativeTuning.ts': Object.freeze({ role: 'palette', kind: 'feel', why: 'Native scene interaction, layout, motion and interface palette.' }),
+  'web/src/gymInteractionTuning.ts': Object.freeze({ role: 'constants', kind: 'feel', why: 'Browser scene input, clock delivery, measurement and placement feedback values.' }),
   'web/src/interfaceTuning.ts': Object.freeze({
     role: 'constants',
     kind: 'feel',

@@ -1,0 +1,11 @@
+/** Original Iron & Amber material palette shared by both platform adapters. */
+export const SCENE_PALETTE = Object.freeze({
+  void: '#211913', backdrop: '#39281f', floor: '#393936', floorDark: '#282b2a', floorLight: '#4c4b43', floorWarm: '#4c4438', floorMortar: '#625d52', floorDust: '#a99472', floorEdge: '#181b1a',
+  brick: '#774d36', brickLight: '#915f3e', brickDark: '#58392d', brickEdge: '#3f3028', mortar: '#40362f', plaster: '#9b8060', plasterShade: '#75654f', steel: '#242a2b', steelFace: '#3e4645', steelEdge: '#11191b', steelLight: '#899087', steelWarm: '#b38a55', bolt: '#c5bca2', hole: '#0b1316', chrome: '#c8cfcc', chromeShade: '#6f8388', chromeBright: '#f2e4c5',
+  rubber: '#1e2427', rubberLight: '#42484a', pad: '#283038', padLight: '#495158', padEdge: '#121c22', seam: '#7e8a86', wood: '#a67545', woodLight: '#c2955b', woodEdge: '#775433', grain: '#785432',
+  red: '#b74838', redShade: '#722c27', redLight: '#dc7050', blue: '#356877', blueShade: '#224754', blueLight: '#609399', green: '#527758', greenShade: '#304f3d', greenLight: '#89a077', yellow: '#c99d3a', yellowShade: '#93702a', yellowLight: '#e1bf61',
+  cream: '#e1d1b2', ivory: '#f5e8cf', amber: '#efb557', amberBright: '#ffd381', amberShade: '#a86932', amberClear: '#eeb65400', shadow: '#080e12', shadowClear: '#080e1200', transparent: '#00000000', windowDark: '#ba8150', window: '#ffe0a3', windowSky: '#f9d9a1', glass: '#77a8a42c',
+  foliage: '#415a35', foliageLight: '#789254', foliageShade: '#293f2b', leafWarm: '#a7a068', pot: '#9d6d45', potLight: '#c49965', cloth: '#283336', clothLight: '#56605b', clothFold: '#101a21', clothWarm: '#5b615d', whiteCloth: '#cbbfb0', whiteClothLight: '#eee1cd', whiteClothFold: '#928d85', shorts: '#964034', shortsLight: '#c15c44', shortsShade: '#582b2a', sock: '#d6cfb8', shoe: '#1d2427', shoeLight: '#465051', shoeSole: '#807e6b',
+  skin: '#b77950', skinLight: '#d8a06d', skinShade: '#7d513d', skinDark: '#774d38', skinDarkLight: '#ad7954', skinDarkShade: '#49362e', skinPale: '#d1a182', skinPaleLight: '#efd0a5', skinPaleShade: '#926b53', hair: '#202423', hairLight: '#444137', beard: '#3c342e',
+  valid: '#7fd2a0', validShade: '#275f47', invalid: '#e7806a', invalidShade: '#752e25', muted: '#ae9c82', cue: '#f4c269',
+});

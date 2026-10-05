@@ -130,6 +130,9 @@ import type { CareerSurfacePhase } from '../meet/careerSurface';
 import type { LifterSurfacePhase } from '../meet/lifterSurface';
 import type { MeetDayPhaseId } from '../game/meetDay';
 import type { SessionPhase } from '../game/session';
+import type { FacilityPort } from '../production/contracts';
+import type { LifterServerPort } from '../game/lifterClient';
+import { assertNativeFacilityPair } from '../facility/native/nativePorts';
 
 const L = SHELL_LAYOUT;
 
@@ -244,13 +247,17 @@ export interface AppShellProps {
    * instruments, because the type checker can only see the shape.
    */
   readonly search: string | null;
+  readonly facilityPort?: FacilityPort;
+  readonly facilityLifterPort?: LifterServerPort;
 }
 
-export function AppShell({ search }: AppShellProps): React.ReactElement {
+export function AppShell({ search, facilityPort, facilityLifterPort }: AppShellProps): React.ReactElement {
+  assertNativeFacilityPair(facilityPort, facilityLifterPort);
   // The launch URL, resolved once. Building a meet preview plays a whole
   // scripted meet, so this must not run per render.
   const entry = useMemo(() => resolveEntry(search), [search]);
   const [route, setRoute] = useState(() => {
+    if (facilityPort !== undefined) return { surface: 'empire' as const, source: 'player' as const };
     if (entry.route.source === 'debug') return entry.route;
     if (appLifterPort().openingProfile() === null) {
       return { surface: 'lifter' as const, source: 'player' as const };
@@ -355,6 +362,11 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const leaveEmpire = useCallback(() => {
     setRoute((current) => navigate(current, 'leave-empire'));
   }, []);
+  const careerFromEmpire = useCallback(() => {
+    setCareerPhase(null);
+    setCareerOpened(true);
+    setRoute((current) => navigate(navigate(current, 'leave-empire'), 'open-career'));
+  }, []);
   // The Career pair follows Empire's exactly: the destination's beat is
   // forgotten on the way in (`CareerScreen` re-reports — `active` is in its
   // phase effect's dependency list), and `leaveCareer` clears NOTHING, because
@@ -394,10 +406,10 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const cutInLive =
     route.surface === 'session' ? sessionCutIn : route.surface === 'meet' ? meetCutIn : false;
   const cutIn: 'live' | 'none' = cutInLive ? 'live' : 'none';
-  const affordance = shellAffordanceFor(route, surfacePhase, cutIn);
-  const empireAffordance = shellEmpireAffordanceFor(route, surfacePhase, cutIn);
-  const careerAffordance = shellCareerAffordanceFor(route, surfacePhase, cutIn);
-  const lifterAffordance = shellLifterAffordanceFor(route, surfacePhase, cutIn);
+  const affordance = facilityPort === undefined ? shellAffordanceFor(route, surfacePhase, cutIn) : null;
+  const empireAffordance = facilityPort === undefined ? shellEmpireAffordanceFor(route, surfacePhase, cutIn) : null;
+  const careerAffordance = facilityPort === undefined ? shellCareerAffordanceFor(route, surfacePhase, cutIn) : null;
+  const lifterAffordance = facilityPort === undefined ? shellLifterAffordanceFor(route, surfacePhase, cutIn) : null;
   const meetFrame = frozenMeetFor(entry, route);
 
   const pressFor = (intent: ShellIntent): (() => void) => {
@@ -431,18 +443,18 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // replay arm is the defensive one the ternary this replaces already had, for a
   // `replay` route that somehow arrived without a frame.
   const sessionMounted =
-    isPersistentSurface(route.surface) ||
-    (route.surface === 'replay' && entry.replay === undefined);
+    facilityPort === undefined && (isPersistentSurface(route.surface) ||
+    (route.surface === 'replay' && entry.replay === undefined));
   const empireMounted =
-    route.surface === 'empire' || (isPersistentSurface('empire') && empireOpened);
+    facilityPort !== undefined || route.surface === 'empire' || (isPersistentSurface('empire') && empireOpened);
   const careerMounted =
-    route.surface === 'career' || (isPersistentSurface('career') && careerOpened);
+    facilityPort === undefined && (route.surface === 'career' || (isPersistentSurface('career') && careerOpened));
   const lifterMounted =
-    route.surface === 'lifter' || (isPersistentSurface('lifter') && lifterOpened);
+    facilityPort === undefined && (route.surface === 'lifter' || (isPersistentSurface('lifter') && lifterOpened));
 
   return (
     <View style={styles.root} testID="app-shell">
-      {route.surface === 'meet' && (meetFrame !== undefined || enteredMeet !== null) ? (
+      {facilityPort === undefined && route.surface === 'meet' && (meetFrame !== undefined || enteredMeet !== null) ? (
         <MeetScreen
           // THE APP'S CONNECTION, or the frozen frame's own stand-in server.
           //
@@ -476,7 +488,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           onCutIn={setMeetCutIn}
           cutInSearch={search}
         />
-      ) : route.surface === 'replay' && entry.replay !== undefined ? (
+      ) : facilityPort === undefined && route.surface === 'replay' && entry.replay !== undefined ? (
         <LiftScreen replay={entry.replay} />
       ) : null}
 
@@ -493,8 +505,16 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
       )}
 
       {!empireMounted ? null : (
-        <View style={route.surface === 'empire' ? styles.surface : styles.hiddenSurface}>
-          <EmpireScreen onPhase={setEmpirePhase} active={route.surface === 'empire'} />
+        <View style={facilityPort !== undefined || route.surface === 'empire' ? styles.surface : styles.hiddenSurface}>
+          <EmpireScreen
+            onPhase={setEmpirePhase}
+            active={facilityPort !== undefined || route.surface === 'empire'}
+            facilityPort={facilityPort}
+            facilityLifterPort={facilityLifterPort}
+            practiceLifterPort={facilityPort === undefined ? appLifterPort() : undefined}
+            onTrain={facilityPort === undefined ? leaveEmpire : undefined}
+            onCareer={facilityPort === undefined ? careerFromEmpire : undefined}
+          />
         </View>
       )}
 

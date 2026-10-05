@@ -3,6 +3,8 @@ import type { FatigueState } from '../game/fatigue';
 import type { LifterProfile } from '../game/lifterProfile';
 import type { ProgressionSnapshotWire } from '../game/progression';
 
+export type FacilityLayoutAction = Extract<GymViewAction, { kind: 'floor-edit' | 'floor-undo' }>;
+
 export type FacilityAction = Exclude<GymViewAction, {
   kind: 'advance-clock' | 'advance-to-next-week' | 'reset-gym' |
     'apply-living-member-observations' | 'set-gym-surface';

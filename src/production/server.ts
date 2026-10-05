@@ -1,5 +1,6 @@
 import { createGymViewState, gymViewReduce, type GymViewState, type GymViewAction } from '../facility/ladderView';
 import { decodeFacilitySave, encodeFacilitySave, persistableGymTruthFromGymView, restoreGymViewState } from '../facility/facilityPersistence';
+import { isFloorRotation } from '../facility/floor';
 import { EMPIRE_TUNING } from '../facility/empireTuning';
 import { TRAINING_STATION_KINDS } from '../facility/trainingStation';
 import { applyTrainingSession, newServerRecord, snapshotWireFor, type ServerRecord } from '../game/sessionServer';
@@ -38,6 +39,7 @@ export class ProductionRefusal extends Error {
 function ensure(condition: unknown, message: string): asserts condition { if (!condition) throw new ProductionRefusal(message); }
 function object(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function keys(value: Record<string, unknown>, allowed: readonly string[]): boolean { return Object.keys(value).every(key => allowed.includes(key)); }
+function exactKeys(value: Record<string, unknown>, fields: readonly string[]): boolean { return Object.keys(value).length === fields.length && keys(value, fields); }
 function member<T extends string>(value: unknown, values: readonly T[]): value is T { return typeof value === 'string' && values.some(candidate => candidate === value); }
 
 export function utcServerDay(nowMs: number): number { ensure(Number.isSafeInteger(nowMs) && nowMs >= 0, 'The server clock is invalid.'); return utcAccountDay(nowMs); }
@@ -88,7 +90,18 @@ export function readFacilityAction(value: unknown): FacilityAction {
     case 'buy-ladder': case 'floor-remove-furniture': ensure(keys(value, ['kind', 'item']) && member(value.item, ladder), 'Gym furniture is invalid.'); break;
     case 'buy-session': case 'floor-remove': ensure(keys(value, ['kind', 'item']) && member(value.item, session), 'Gym equipment is invalid.'); break;
     case 'repair-item': case 'decline-repair': ensure(keys(value, ['kind', 'item']) && member(value.item, managed), 'Repair item is invalid.'); break;
-    case 'floor-place': case 'floor-place-furniture': ensure(keys(value, ['kind', 'item', 'position']) && member(value.item, value.kind === 'floor-place' ? session : ladder), 'Placement equipment is invalid.'); ensure(object(value.position) && keys(value.position, ['x', 'y']) && Number.isSafeInteger(value.position.x) && Number.isSafeInteger(value.position.y), 'Placement coordinates must be whole tiles.'); break;
+    case 'floor-place': case 'floor-place-furniture': ensure(keys(value, ['kind', 'item', 'position']) && member(value.item, value.kind === 'floor-place' ? session : ladder), 'Placement equipment is invalid.'); ensure(object(value.position) && keys(value.position, ['x', 'y', 'rotation']) && (value.position.rotation === undefined || isFloorRotation(value.position.rotation)) && Number.isSafeInteger(value.position.x) && Number.isSafeInteger(value.position.y), 'Placement coordinates must be whole tiles.'); break;
+    case 'floor-edit': {
+      ensure(exactKeys(value, ['kind', 'expectedLayoutRevision', 'target', 'placement']), 'Layout edit contains unsupported or missing fields.');
+      ensure(Number.isSafeInteger(value.expectedLayoutRevision) && (value.expectedLayoutRevision as number) >= 0, 'Layout revision is invalid.');
+      ensure(object(value.target) && exactKeys(value.target, ['kind', 'item']), 'Layout target is invalid.');
+      ensure((value.target.kind === 'session' && member(value.target.item, session)) || (value.target.kind === 'furniture' && member(value.target.item, ladder)), 'Layout target is invalid.');
+      ensure(value.placement === null || (object(value.placement) && exactKeys(value.placement, ['x', 'y', 'rotation']) && Number.isSafeInteger(value.placement.x) && Number.isSafeInteger(value.placement.y) && (value.placement.x as number) >= 0 && (value.placement.y as number) >= 0 && isFloorRotation(value.placement.rotation)), 'Placement requires whole tiles and a supported rotation.');
+      break;
+    }
+    case 'floor-undo':
+      ensure(exactKeys(value, ['kind', 'expectedLayoutRevision']) && Number.isSafeInteger(value.expectedLayoutRevision) && (value.expectedLayoutRevision as number) >= 0, 'Undo layout revision is invalid.');
+      break;
     case 'hire-manager': ensure(keys(value, ['kind', 'tier']) && member(value.tier, EMPIRE_TUNING.MANAGER_TIERS), 'Manager tier is invalid.'); break;
     case 'answer-prompt': ensure(keys(value, ['kind', 'response']) && member(value.response, ['repair', 'dismiss']), 'Maintenance response is invalid.'); break;
     case 'upgrade-station': ensure(keys(value, ['kind', 'station', 'axis']) && member(value.station, TRAINING_STATION_KINDS) && member(value.axis, EMPIRE_TUNING.STATION_UPGRADE_AXES), 'Station upgrade is invalid.'); break;

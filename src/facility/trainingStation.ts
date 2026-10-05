@@ -33,6 +33,10 @@
 
 import {
   floorFurnitureLayout,
+  floorLayout,
+  floorPositionRotation,
+  type FloorPosition,
+  type FloorRotation,
   floorGridSize,
   furnitureItemFootprint,
   type FloorState,
@@ -76,7 +80,8 @@ export function isTrainingStationKind(value: string): value is TrainingStationKi
 
 /** One physical bench position belonging to the bay. */
 export interface BayBench {
-  readonly position: GridPosition;
+  readonly position: FloorPosition;
+  readonly rotation: FloorRotation;
   readonly footprint: GridSize;
   readonly source: 'primary' | 'expansion';
 }
@@ -84,7 +89,8 @@ export interface BayBench {
 /** One required component as it currently sits, or would sit, on the floor. */
 export interface BayComponent {
   readonly item: LadderEquipmentItem;
-  readonly position: GridPosition;
+  readonly position: FloorPosition;
+  readonly rotation: FloorRotation;
   readonly footprint: GridSize;
 }
 
@@ -168,10 +174,8 @@ function expansionFits(
  * the purchased axis (0 or 1); this function realises that many physical
  * benches only when the second footprint actually fits.
  *
- * Session placements are not blockers here. The floor sim blocks them
- * separately, and FloorGrid refuses a drop onto the expansion the same way
- * it already refuses a drop onto furniture. Capacity's spatial consequence
- * is the Barbell layout.
+ * Session and furniture placements both block the derived second bench.
+ * A purchased seat must occupy free floor cells at its current orientation.
  */
 export function competitionBenchBay(
   floor: FloorState,
@@ -186,6 +190,7 @@ export function competitionBenchBay(
     const component: BayComponent = Object.freeze({
       item: row.item,
       position: row.position,
+      rotation: row.rotation,
       footprint: row.footprint,
     });
     components.push(component);
@@ -201,6 +206,7 @@ export function competitionBenchBay(
       ? null
       : Object.freeze({
           position: primaryRow.position,
+          rotation: primaryRow.rotation,
           footprint: primaryRow.footprint,
           source: 'primary' as const,
         });
@@ -224,10 +230,12 @@ export function competitionBenchBay(
       if (row.item === COMPETITION_BENCH_BAY_PRIMARY) continue;
       blockers.push(row);
     }
+    blockers.push(...floorLayout(floor));
     for (const candidate of adjacentExpansionCandidates(primary.position, primary.footprint)) {
       if (!expansionFits(candidate, primary.footprint, grid, blockers)) continue;
       expansion = Object.freeze({
-        position: candidate,
+        position: Object.freeze({ ...candidate, rotation: primary.rotation }),
+        rotation: primary.rotation,
         footprint: primary.footprint,
         source: 'expansion' as const,
       });
@@ -287,5 +295,5 @@ export function bayOccupiedCells(bay: CompetitionBenchBay): number {
 }
 
 export function sameBayBench(left: BayBench, right: BayBench): boolean {
-  return left.source === right.source && sameCell(left.position, right.position);
+  return left.source === right.source && sameCell(left.position, right.position) && floorPositionRotation(left.position) === floorPositionRotation(right.position);
 }

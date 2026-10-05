@@ -1,0 +1,62 @@
+import { SCENE_PALETTE as P } from './scenePalette';
+import type { ManagedEquipmentItem } from '../management';
+import type { SceneMaterial } from './geometry';
+
+export const EQUIPMENT_MATERIALS:Readonly<Record<string,SceneMaterial>>=Object.freeze({
+ steel:{top:P.steelLight,front:P.steelFace,side:P.steel,edge:P.steelEdge}, pad:{top:P.padLight,front:P.pad,side:P.pad,edge:P.padEdge}, rubber:{top:P.rubberLight,front:P.rubber,side:P.rubber,edge:P.steelEdge}, wood:{top:P.woodLight,front:P.wood,side:P.woodEdge,edge:P.grain}, red:{top:P.redLight,front:P.red,side:P.redShade,edge:P.redShade}, blue:{top:P.blueLight,front:P.blue,side:P.blueShade,edge:P.blueShade}, green:{top:P.greenLight,front:P.green,side:P.greenShade,edge:P.greenShade}, amber:{top:P.amberBright,front:P.amber,side:P.amberShade,edge:P.amberShade}, cream:{top:P.ivory,front:P.cream,side:P.muted,edge:P.muted},
+});
+export interface AssetBox {readonly position:readonly[number,number,number];readonly size:readonly[number,number,number];readonly material:string;readonly holes?:boolean;readonly bolts?:boolean;readonly pad?:boolean}
+export interface AssetBeam {readonly from:readonly[number,number,number];readonly to:readonly[number,number,number];readonly width:number;readonly material:'steel'|'chrome'|'rubber'|'red'|'wood'}
+export interface EquipmentAsset {readonly size:readonly[number,number];readonly height:number;readonly boxes:readonly AssetBox[];readonly beams:readonly AssetBeam[];readonly detail:string;readonly label:string}
+
+/** Authored dimensions are metres in an integer-metre placement footprint; the spare area is access clearance. */
+export const EQUIPMENT_ASSETS:Readonly<Record<ManagedEquipmentItem,EquipmentAsset>>=Object.freeze({
+ 'flat-bench':{size:[2,4],height:1.72,label:'Competition bench',detail:'bench',boxes:[
+  {position:[.18,.62,.03],size:[.16,.72,.12],material:'steel',bolts:true},{position:[1.66,.62,.03],size:[.16,.72,.12],material:'steel',bolts:true},
+  {position:[.25,.87,.12],size:[.12,.15,1.5],material:'steel',holes:true},{position:[1.63,.87,.12],size:[.12,.15,1.5],material:'steel',holes:true},
+  {position:[.35,.93,.23],size:[1.28,.1,.18],material:'steel'},{position:[.83,1.04,.22],size:[.34,2.12,.2],material:'steel'},
+  {position:[.55,2.87,.03],size:[.9,.24,.1],material:'steel',bolts:true},{position:[.9,2.88,.12],size:[.2,.2,.32],material:'steel'},
+  {position:[.67,.78,.42],size:[.66,2.34,.15],material:'pad',pad:true}],beams:[{from:[.33,1.07,1.26],to:[.33,.82,1.26],width:.08,material:'chrome'},{from:[1.68,1.07,1.26],to:[1.68,.82,1.26],width:.08,material:'chrome'}]},
+ 'power-bar':{size:[1,3],height:2.14,label:'Power bar',detail:'bar-storage',boxes:[{position:[.12,.36,.02],size:[.74,.67,.11],material:'steel',bolts:true},{position:[.26,.47,.13],size:[.48,.4,.48],material:'steel'}],beams:[{from:[.35,.65,.42],to:[.35,.65,2.09],width:.045,material:'chrome'},{from:[.58,.77,.42],to:[.58,.77,1.97],width:.045,material:'chrome'},{from:[.73,.6,.45],to:[.73,.6,2.14],width:.055,material:'chrome'}]},
+ 'comp-plates':{size:[2,2],height:1.72,label:'Competition plates',detail:'plate-tree',boxes:[{position:[.17,.92,.02],size:[1.65,.16,.13],material:'steel',bolts:true},{position:[.92,.2,.02],size:[.16,1.62,.13],material:'steel',bolts:true},{position:[.92,.9,.12],size:[.16,.16,1.45],material:'steel',holes:true}],beams:[{from:[.98,.99,.62],to:[.34,.99,.62],width:.045,material:'chrome'},{from:[.98,.99,.98],to:[1.69,.99,.98],width:.045,material:'chrome'},{from:[.98,.99,1.36],to:[.43,.99,1.36],width:.045,material:'chrome'}]},
+ 'squat-rack':{size:[3,4],height:2.58,label:'Squat rack',detail:'rack',boxes:[
+  {position:[.3,.42,.02],size:[.2,3.1,.14],material:'steel',bolts:true},{position:[2.5,.42,.02],size:[.2,3.1,.14],material:'steel',bolts:true},
+  {position:[.34,.49,.14],size:[.13,.16,2.35],material:'steel',holes:true},{position:[2.52,.49,.14],size:[.13,.16,2.35],material:'steel',holes:true},
+  {position:[.34,3.14,.14],size:[.13,.16,2.35],material:'steel',holes:true},{position:[2.52,3.14,.14],size:[.13,.16,2.35],material:'steel',holes:true},
+  {position:[.47,.51,2.36],size:[2.05,.13,.14],material:'steel',bolts:true},{position:[.47,3.17,2.36],size:[2.05,.13,.14],material:'steel',bolts:true},
+  {position:[.38,.7,1.0],size:[.1,2.49,.12],material:'steel'},{position:[2.55,.7,1.0],size:[.1,2.49,.12],material:'steel'}],beams:[{from:[.42,.58,2.48],to:[.42,3.21,2.48],width:.11,material:'steel'},{from:[2.59,.58,2.48],to:[2.59,3.21,2.48],width:.11,material:'steel'}]},
+ bike:{size:[2,2],height:1.52,label:'Air bike',detail:'bike',boxes:[{position:[.23,.28,.02],size:[1.52,.15,.1],material:'steel',bolts:true},{position:[.32,1.54,.02],size:[1.35,.15,.1],material:'steel',bolts:true},{position:[.73,1.31,.9],size:[.54,.37,.13],material:'pad',pad:true}],beams:[{from:[1,.46,.25],to:[1,1.3,.6],width:.11,material:'steel'},{from:[1,1.31,.25],to:[1,1.47,.93],width:.1,material:'chrome'},{from:[1,.47,.47],to:[1,.65,1.38],width:.11,material:'steel'},{from:[.58,.7,1.38],to:[1.42,.7,1.38],width:.085,material:'rubber'}]},
+ treadmill:{size:[2,4],height:1.62,label:'Treadmill',detail:'treadmill',boxes:[{position:[.22,.37,.04],size:[1.56,3.28,.15],material:'steel',bolts:true},{position:[.36,.52,.2],size:[1.28,2.83,.05],material:'rubber'},{position:[.22,.37,1.36],size:[1.56,.34,.15],material:'steel'}],beams:[{from:[.31,.47,.21],to:[.31,.62,1.45],width:.1,material:'steel'},{from:[1.69,.47,.21],to:[1.69,.62,1.45],width:.1,material:'steel'},{from:[.31,.65,1.05],to:[.31,1.56,1.05],width:.08,material:'rubber'},{from:[1.69,.65,1.05],to:[1.69,1.56,1.05],width:.08,material:'rubber'}]},
+ rower:{size:[2,5],height:1.12,label:'Rower',detail:'rower',boxes:[{position:[.28,.39,.03],size:[1.42,.17,.13],material:'steel',bolts:true},{position:[.89,.71,.23],size:[.22,3.96,.1],material:'steel'},{position:[.58,4.38,.02],size:[.84,.22,.31],material:'steel',bolts:true},{position:[.69,2.43,.38],size:[.62,.48,.16],material:'pad',pad:true},{position:[.45,1.7,.35],size:[.3,.46,.11],material:'rubber'},{position:[1.25,1.7,.35],size:[.3,.46,.11],material:'rubber'}],beams:[{from:[.88,.81,.57],to:[1,1.98,.67],width:.022,material:'chrome'}]},
+ sled:{size:[3,12],height:1.14,label:'Sled track',detail:'sled',boxes:[{position:[.16,.1,.012],size:[2.68,11.8,.02],material:'green'},{position:[.58,7.77,.05],size:[.18,2.07,.08],material:'steel'},{position:[2.25,7.77,.05],size:[.18,2.07,.08],material:'steel'},{position:[.76,8.08,.13],size:[1.49,1.1,.13],material:'steel',bolts:true}],beams:[{from:[.79,8.17,.25],to:[.79,8.17,1.11],width:.09,material:'steel'},{from:[2.18,8.17,.25],to:[2.18,8.17,1.11],width:.09,material:'steel'},{from:[1.48,8.61,.22],to:[1.48,8.61,.87],width:.065,material:'chrome'}]},
+ dumbbells:{size:[3,2],height:1.42,label:'Dumbbell rack',detail:'dumbbells',boxes:[{position:[.17,.21,.03],size:[.2,1.55,.12],material:'steel',bolts:true},{position:[2.63,.21,.03],size:[.2,1.55,.12],material:'steel',bolts:true},{position:[.19,1.35,.13],size:[.13,.16,1.15],material:'steel'},{position:[2.65,1.35,.13],size:[.13,.16,1.15],material:'steel'},{position:[.29,.76,.67],size:[2.36,.67,.08],material:'steel'},{position:[.29,.7,1.24],size:[2.36,.67,.08],material:'steel'}],beams:[]},
+ cables:{size:[2,3],height:2.53,label:'Cable station',detail:'cables',boxes:[{position:[.12,.26,.02],size:[1.76,2.42,.11],material:'steel',bolts:true},{position:[.19,.45,.13],size:[.41,.74,2.2],material:'steel',holes:true},{position:[1.4,.45,.13],size:[.41,.74,2.2],material:'steel',holes:true},{position:[.26,.47,2.35],size:[1.48,.2,.16],material:'steel',bolts:true},{position:[.7,1.59,.56],size:[.6,.71,.16],material:'pad',pad:true}],beams:[{from:[.48,.9,2.27],to:[.71,1.54,1.11],width:.018,material:'chrome'},{from:[1.54,.9,2.27],to:[1.28,1.54,1.11],width:.018,material:'chrome'},{from:[.76,.56,2.53],to:[1.24,.56,2.53],width:.065,material:'rubber'}]},
+ machines:{size:[3,3],height:2.12,label:'Strength machine',detail:'machine',boxes:[{position:[.35,.33,.02],size:[2.31,2.31,.12],material:'steel',bolts:true},{position:[1.79,.49,.14],size:[.66,.62,1.87],material:'steel'},{position:[1.03,.53,.16],size:[.21,.2,1.6],material:'steel',holes:true},{position:[.89,1.31,.58],size:[.7,.83,.17],material:'pad',pad:true},{position:[.89,.86,.74],size:[.7,.24,1.02],material:'pad',pad:true}],beams:[{from:[.47,1.37,1.02],to:[.62,.8,1.74],width:.095,material:'steel'},{from:[1.96,1.37,1.02],to:[1.81,.8,1.74],width:.095,material:'steel'},{from:[.46,1.58,1.13],to:[.46,1.26,1.13],width:.075,material:'rubber'},{from:[1.97,1.58,1.13],to:[1.97,1.26,1.13],width:.075,material:'rubber'}]},
+ mats:{size:[3,3],height:.09,label:'Stretching mats',detail:'mats',boxes:[{position:[.22,.29,.015],size:[1.12,2.35,.045],material:'blue',pad:true},{position:[1.62,.29,.015],size:[1.12,2.35,.045],material:'rubber',pad:true}],beams:[]},
+ 'foam-rollers':{size:[1,1],height:.8,label:'Foam rollers',detail:'rollers',boxes:[{position:[.11,.16,.02],size:[.77,.7,.08],material:'wood',bolts:true}],beams:[]},
+ sauna:{size:[4,4],height:2.75,label:'Sauna',detail:'sauna',boxes:[{position:[.12,.12,.01],size:[3.76,3.76,.14],material:'wood'},{position:[.12,.12,.15],size:[3.76,.18,2.55],material:'wood'},{position:[.12,.12,.15],size:[.18,3.76,2.55],material:'wood'},{position:[.33,.43,.57],size:[3.02,.58,.12],material:'wood'},{position:[.33,.53,.22],size:[3.02,.42,.12],material:'wood'},{position:[2.93,.16,.15],size:[.16,3.1,2.3],material:'steel'},{position:[.12,3.66,.15],size:[2.95,.16,2.3],material:'wood'}],beams:[]},
+ 'wrist-wraps':{size:[1,1],height:.91,label:'Wrist wraps',detail:'wraps',boxes:[{position:[.14,.15,.02],size:[.72,.72,.74],material:'wood',bolts:true},{position:[.09,.1,.77],size:[.82,.82,.1],material:'wood'}],beams:[]},
+ belts:{size:[1,1],height:1.74,label:'Lifting belts',detail:'belts',boxes:[{position:[.14,.14,.02],size:[.73,.73,.11],material:'steel',bolts:true},{position:[.43,.43,.13],size:[.13,.13,1.46],material:'steel'},{position:[.14,.43,1.56],size:[.72,.13,.08],material:'wood'}],beams:[]},
+ sleeves:{size:[1,1],height:1.19,label:'Knee sleeves',detail:'sleeves',boxes:[{position:[.13,.14,.02],size:[.75,.71,1.01],material:'wood'},{position:[.1,.12,1.05],size:[.82,.75,.08],material:'wood'}],beams:[]},
+ 'specialty-bars':{size:[1,3],height:2.39,label:'Specialty bars',detail:'specialty-bars',boxes:[{position:[.1,.24,.02],size:[.8,2.52,.11],material:'steel',bolts:true},{position:[.28,.57,.14],size:[.44,1.41,.31],material:'steel'}],beams:[{from:[.36,.84,.34],to:[.36,.84,2.16],width:.055,material:'chrome'},{from:[.64,1.08,.34],to:[.64,1.08,2.32],width:.055,material:'chrome'},{from:[.53,1.46,.34],to:[.53,1.46,2.2],width:.055,material:'chrome'}]},
+});
+
+export const EQUIPMENT_DETAIL_GEOMETRY=Object.freeze({
+  benchBar:{from:[.09,.94,1.27],to:[1.91,.94,1.27],radius:.035,plates:[.21,.29,.37,1.63,1.71,1.79],plateRadius:.34},
+  rackBar:{from:[.12,1.65,1.48],to:[2.88,1.65,1.48],radius:.035,plates:[.28,.36,.44,2.56,2.64,2.72],plateRadius:.4},
+  plateTree:{positions:[[.47,.99,.61],[.59,.99,.61],[.71,.99,.61],[1.3,.99,.98],[1.42,.99,.98],[1.54,.99,.98],[.55,.99,1.36],[.65,.99,1.36]],radii:[.38,.38,.38,.32,.32,.32,.24,.24],materials:['red','red','red','blue','blue','blue','amber','amber']},
+  bike:{wheel:[1,.55,.54],wheelRadius:.44,crank:[1,1.09,.41],crankRadius:.16,pedalLength:.26,seat:[1,1.46,1.03],handles:[[.61,.7,1.38],[1.39,.7,1.38]]},
+  rower:{wheel:[1,.74,.66],radius:.48,fanBlades:12,handleFrom:[.67,1.82,.72],handleTo:[1.33,1.82,.72]},
+  treadmill:{display:[.51,.4,1.515],displaySize:[.97,.24,.012],stripeSpacing:.24,stripeWidth:.014},
+  dumbbells:{xs:[.56,1.16,1.76,2.36],ys:[1.04,1.01],zs:[.82,1.38],headRadius:.14,barWidth:.31},
+  selectors:{count:12,spacing:.084,bottom:.23,width:.25,depth:.47,thickness:.055},
+  roller:{centers:[[.28,.35,.38],[.63,.35,.38],[.45,.65,.38]],radius:.12,height:.56,ribs:9,ribSpacing:.045},
+  sauna:{slatSpacing:.19,slatWidth:.015,glassFrom:[.31,3.67,.17],glassSize:[2.53,.015,2.14],heater:[.5,2.87,.14],heaterSize:[.48,.48,.62],steamHeight:.4},
+  wraps:{centers:[[.34,.35,.94],[.62,.61,.94]],radius:.105,strapLength:.26},
+  belts:{xs:[.25,.5,.75],y:.57,bottom:.59,top:1.57,width:.16,buckleZ:1.08},
+  sleeves:{centers:[[.32,.38,1.16],[.68,.62,1.16]],radius:.13,height:.24},
+  mats:{seamInset:.09,gripSpacing:.2},
+  sled:{laneMarkInterval:1,plateCenter:[1.48,8.61,.33],plateRadius:.34,plateLevels:[.32,.41,.5,.59],handleZ:1.11},
+  bolts:{cornerInset:.055,zOffset:.012},
+  label:{fontSize:.13,plateText:'25',seatLabel:'TWL'},
+});

@@ -982,7 +982,8 @@ export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freez
   { extension: '.jpeg', reason: 'nul-byte', count: 1 },
   // Two additional credential-free dashboard proof captures; both inspected.
   { extension: '.jpg', reason: 'nul-byte', count: 40 },
-  { extension: '.png', reason: 'nul-byte', count: 121 },
+  // Three owner-selected, original gym mockups; inspected as design references.
+  { extension: '.png', reason: 'nul-byte', count: 124 },
   { extension: '.ttf', reason: 'nul-byte', count: 3 },
   { extension: '.wav', reason: 'nul-byte', count: 14 },
   { extension: '.webp', reason: 'nul-byte', count: 2 },
@@ -1751,6 +1752,7 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'Genesis', where: 'prose', count: 1 },
   { file: 'BUILD_PROMPT_CLAUDE.md', name: 'SNES', where: 'prose', count: 1 },
   { file: 'CLAUDE.md', name: 'Supabase', where: 'prose', count: 2 },
+  { file: 'docs/design/gym-empire/EXECUTION.md', name: 'Supabase', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },
   { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'Genesis', where: 'prose', count: 2 },
@@ -1805,6 +1807,7 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'USAPL', where: 'code', count: 3 },
   { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'USAPL', where: 'comment', count: 1 },
   { file: 'README.md', name: 'Supabase', where: 'prose', count: 2 },
+  { file: 'scripts/gym-playtest.mjs', name: 'Supabase', where: 'code', count: 2 },
   { file: 'scripts/production-account-browser.mjs', name: 'Supabase', where: 'code', count: 6 },
   { file: 'src/art/craftMetrics.test.ts', name: 'SNES', where: 'code', count: 6 },
   { file: 'src/art/craftMetrics.ts', name: 'MLB', where: 'comment', count: 1 },
@@ -1975,4 +1978,5 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'web/tests/production-http-fixture.mjs', name: 'Supabase', where: 'code', count: 2 },
   { file: 'web/tests/production-http-fixture.mjs', name: 'Supabase', where: 'comment', count: 1 },
   { file: 'web/tests/production-repository.test.ts', name: 'Supabase', where: 'code', count: 1 },
+  { file: 'workbench.md', name: 'Supabase', where: 'prose', count: 1 },
 ]);

@@ -23,16 +23,22 @@ import {
 } from './ladder';
 import {
   type FloorFurniturePlaceResult,
+  type FloorEditRefusal,
+  type FloorEditResult,
+  type FloorEditTarget,
+  type FloorPosition,
+  type OrientedFloorPosition,
+  editFloorLayout,
+  undoFloorLayout,
+  markFloorLayoutChanged,
+  floorPositionRotation,
+  sessionItemFootprint,
+  furnitureItemFootprint,
   type FloorPlaceResult,
   type FloorState,
-  type GridPosition,
   createFloorState,
-  placeFloorFurniture,
-  placeFloorItem,
   placedOwnedItems,
   relocateFloorState,
-  removeFloorFurniture,
-  removeFloorItem,
 } from './floor';
 import type { FloorSimServiceObservation } from './floorSim';
 import {
@@ -92,6 +98,8 @@ import {
   type StationUpgradeRefuseReason,
 } from './stationCapability';
 import {
+  COMPETITION_BENCH_BAY,
+  overlapsBayExpansion,
   capacityRealizesOn,
   competitionBenchBay,
   type TrainingStationKind,
@@ -246,7 +254,8 @@ export type GymViewRefusal =
   | Extract<RecoveryResult, { readonly kind: 'refused' }>['reason']
   | Extract<PromptResult, { readonly kind: 'repair-refused' }>['reason']
   | Extract<PromptResult, { readonly kind: 'no-prompt' }>['kind']
-  | StationUpgradeRefuseReason;
+  | StationUpgradeRefuseReason
+  | FloorEditRefusal;
 
 /**
  * The fourteen things a player can do on this screen — six from stage 1/2,
@@ -313,15 +322,17 @@ export type GymViewAction =
   | {
       readonly kind: 'floor-place';
       readonly item: SessionEquipmentItem;
-      readonly position: GridPosition;
+      readonly position: FloorPosition;
     }
   | { readonly kind: 'floor-remove'; readonly item: SessionEquipmentItem }
   | {
       readonly kind: 'floor-place-furniture';
       readonly item: LadderEquipmentItem;
-      readonly position: GridPosition;
+      readonly position: FloorPosition;
     }
   | { readonly kind: 'floor-remove-furniture'; readonly item: LadderEquipmentItem }
+  | { readonly kind: 'floor-edit'; readonly expectedLayoutRevision: number; readonly target: FloorEditTarget; readonly placement: OrientedFloorPosition | null }
+  | { readonly kind: 'floor-undo'; readonly expectedLayoutRevision: number }
   | { readonly kind: 'set-gym-surface'; readonly surface: GymSurface }
   | { readonly kind: 'answer-prompt'; readonly response: PromptResponse }
   | { readonly kind: 'repair-item'; readonly item: ManagedEquipmentItem }
@@ -477,6 +488,24 @@ function advanceGymClock(
  * `ladder.ts`), so nothing is ever un-owned and that function's refusal arm is
  * unreachable from this reducer.
  */
+/** All exposed layout paths share revision, geometry, and capacity validation. */
+function reduceLayoutEdit(state: GymViewState, target: FloorEditTarget, placement: FloorPosition | null, expectedLayoutRevision: number, undo = false): GymViewState {
+  if (expectedLayoutRevision !== state.floor.layoutRevision) return Object.freeze({ ...state, lastRefusal: 'layout-conflict' });
+  const level = stationLevels(state.capability, COMPETITION_BENCH_BAY).capacity;
+  const existingBay = competitionBenchBay(state.floor, state.managed.gym.ladder.equipment, level);
+  if (placement !== null && !(target.kind === 'furniture' && target.item === 'flat-bench')) {
+    const footprint = target.kind === 'session' ? sessionItemFootprint(target.item, floorPositionRotation(placement)) : furnitureItemFootprint(target.item, floorPositionRotation(placement));
+    if (overlapsBayExpansion(placement, footprint, existingBay)) return Object.freeze({ ...state, lastRefusal: 'overlaps' });
+  }
+  const outcome: FloorEditResult = undo
+    ? undoFloorLayout(state.floor, state.managed.gym.sessionEquipment, state.managed.gym.ladder.equipment, expectedLayoutRevision)
+    : editFloorLayout(state.floor, state.managed.gym.sessionEquipment, state.managed.gym.ladder.equipment, target, placement, expectedLayoutRevision);
+  if (outcome.kind === 'refused') return Object.freeze({ ...state, lastRefusal: outcome.reason });
+  const nextBay = competitionBenchBay(outcome.state, state.managed.gym.ladder.equipment, level);
+  if (level > 0 && nextBay.complete && nextBay.expansion === null) return Object.freeze({ ...state, lastRefusal: 'no-second-position' });
+  return Object.freeze({ ...state, floor: outcome.state, lastRefusal: null });
+}
+
 export function gymViewReduce(state: GymViewState, action: GymViewAction): GymViewState {
   switch (action.kind) {
     case 'advance-clock':
@@ -515,7 +544,7 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
         // (`ladder.ts`'s own contract), so reading the POST-outcome rung here
         // is a no-op on refusal and a real reset only when the move landed.
         floor:
-          outcome.kind === 'moved' ? relocateFloorState(outcome.state.rung) : state.floor,
+          outcome.kind === 'moved' ? relocateFloorState(outcome.state.rung, state.floor) : state.floor,
         livingMembers:
           outcome.kind === 'moved'
             ? reconcileLivingMemberRosterOnRelocation(
@@ -527,45 +556,20 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
             : state.livingMembers,
       });
     }
-    case 'floor-place': {
-      const outcome = placeFloorItem(
-        state.floor,
-        state.managed.gym.sessionEquipment,
-        action.item,
-        action.position,
-      );
-      return Object.freeze({
-        ...state,
-        floor: outcome.state,
-        lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
-      });
-    }
-    case 'floor-remove': {
-      return Object.freeze({
-        ...state,
-        floor: removeFloorItem(state.floor, action.item),
-        lastRefusal: null,
-      });
-    }
-    case 'floor-place-furniture': {
-      const outcome = placeFloorFurniture(
-        state.floor,
-        state.managed.gym.ladder.equipment,
-        action.item,
-        action.position,
-      );
-      return Object.freeze({
-        ...state,
-        floor: outcome.state,
-        lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
-      });
-    }
-    case 'floor-remove-furniture': {
-      return Object.freeze({
-        ...state,
-        floor: removeFloorFurniture(state.floor, action.item),
-        lastRefusal: null,
-      });
+    case 'floor-place':
+      return reduceLayoutEdit(state, { kind: 'session', item: action.item }, action.position, state.floor.layoutRevision);
+    case 'floor-remove':
+      return reduceLayoutEdit(state, { kind: 'session', item: action.item }, null, state.floor.layoutRevision);
+    case 'floor-place-furniture':
+      return reduceLayoutEdit(state, { kind: 'furniture', item: action.item }, action.position, state.floor.layoutRevision);
+    case 'floor-remove-furniture':
+      return reduceLayoutEdit(state, { kind: 'furniture', item: action.item }, null, state.floor.layoutRevision);
+    case 'floor-edit':
+      return reduceLayoutEdit(state, action.target, action.placement, action.expectedLayoutRevision);
+    case 'floor-undo': {
+      const edit = state.floor.lastLayoutEdit;
+      if (edit === null) return Object.freeze({ ...state, lastRefusal: action.expectedLayoutRevision === state.floor.layoutRevision ? 'nothing-to-undo' : 'layout-conflict' });
+      return reduceLayoutEdit(state, edit.target, edit.previous, action.expectedLayoutRevision, true);
     }
     case 'set-gym-surface': {
       return Object.freeze({
@@ -684,6 +688,7 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
           ),
         ),
         capability: outcome.capability,
+        floor: action.axis === 'capacity' ? markFloorLayoutChanged(state.floor) : state.floor,
         lastRefusal: null,
       });
     }

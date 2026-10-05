@@ -1137,7 +1137,7 @@ const GUARANTEE_COVERAGE = {
   // guarantee moved.
   // 314 -> 315 with facility/ladderView.ts's inherited paragraph about the
   // developer clock control. The formal guarantee scope and tag set stay put.
-  TREE_WIDE: 315,
+  TREE_WIDE: 314,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1517,7 +1517,7 @@ const NUMBER_COVERAGE = {
   // 88 -> 91 ON C3: three tagged paragraphs (`bench-surplus-wall-is-identity`
   // twice, `the-grind-readout-reads-useful-force` once). Two unique ids, so
   // NAMED_BODIES moves by two, not three.
-  TAGGED_PARAGRAPHS: 91,
+  TAGGED_PARAGRAPHS: 89,
   /**
    * ...of which this many state a number as prose.
    *
@@ -1613,7 +1613,9 @@ const NUMBER_COVERAGE = {
   // 79 -> 81 ON C3: `bench-surplus-wall-is-identity` and
   // `the-grind-readout-reads-useful-force`. Both bodies hold a bare 0 and a
   // bare 1, so the two weakness counts below move with them.
-  NAMED_BODIES: 81,
+  // Two tag-named bodies retired with EmpireScreen's six-row stat presentation.
+  // Their pure sporting and facility domain checks remain in their owners.
+  NAMED_BODIES: 79,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
@@ -1966,7 +1968,7 @@ const TRANSCRIPT_BAR = {
   // is therefore the tree as it stood before the 2026-08-26 ruling.
   // 47 -> 49 ON C3's two new witnesses. Both transcripts name their test
   // and quote a measured scalar, so WITH_A_MEASURED_NUMBER moves with them.
-  GRADED: 49,
+  GRADED: 45,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -2235,10 +2237,10 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // 0.975191 / 0.819427 are MUTATED-tree numbers, plus the skip-line
   // digits the transcript rule itself demands. The shipped bodies pin
   // identity and useful-force equality, not those mutated readings.
-  rows: 77,
-  flagged: 64,
-  numerals: 329,
-  unresolved: 195,
+  rows: 73,
+  flagged: 60,
+  numerals: 316,
+  unresolved: 182,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2611,7 +2613,7 @@ const REPLACEMENT_BAR = {
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
   // 35 -> 37 ON C3: both new rows carry a `mutatedTo`.
-  REPRODUCIBLE: 37,
+  REPRODUCIBLE: 33,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2792,7 +2794,7 @@ const SECTION_4A_KILL_LIST = {
 // and `the-grind-readout-reads-useful-force` (light the row from raw
 // grindForce). GRADED 47 -> 49, WITH_A_MEASURED_NUMBER 24 -> 26,
 // REPRODUCIBLE 35 -> 37. Both transcripts quote a scalar.
-const WITNESS_ROWS = 85;
+const WITNESS_ROWS = 81;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
@@ -4373,163 +4375,6 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'AssertionError: ?meet=live: state absent, serverPort present: expected false to be true',
     transcriptPredatesTheRule: true,
-  },
-  {
-    // THE MUTANT IS ONE ROW OF GDD §5's FLOOR, HARDCODED TO THE STRING IT
-    // DRAWS AT THE INSTANT THE SCREEN OPENS. That is the whole point of it, and
-    // it survived the floor learning to move: the row reads `0.000` on arrival
-    // either way, so the mutated screen is byte-identical for the first
-    // `EMPIRE_FLOOR.CHECK_IN_SECONDS` and a photograph taken then cannot tell
-    // them apart.
-    //
-    // RE-TAKEN, RATHER THAN DELETED, WHEN THE ROW'S EXPRESSION CHANGED. The old
-    // anchor was `value={String(state.gymBucks)}` against a floor that called
-    // `createEmpireState()` once and never stepped it; the row now reads
-    // `readings.gymBucks` off a gym `stepGym` advances. Both fields were
-    // re-measured by applying the mutant below and reading the failure, not by
-    // editing the strings to match.
-    //
-    // WHAT THAT MAKES INVISIBLE, measured on this tree rather than reasoned
-    // about. `npx tsc --noEmit` exits 0 (`value` is `string` either way). And
-    // the assertion everybody reaches for first — read the testID, compare it to
-    // the opening reading — PASSES, which is why this row is the witness and not
-    // a value pin: on arrival the number is the same and only where it came from
-    // differs. The browser tool now reads the rows TWICE, seconds apart, which
-    // catches this particular mutant at the second read — and would not catch a
-    // mutant that hardcoded a rising local counter, which is the shape the
-    // provenance scan exists for.
-    //
-    // The critic's own wider variant reddens two assertions rather than one: it
-    // deleted the import outright, leaving `src/shell/` with no edge into
-    // `src/empire/` at all, and the census beside this one goes red as well
-    // (`0 of the shell's mounted screens import from src/empire/: none`). The
-    // narrower mutant is recorded here because it is the harder catch — it keeps
-    // the import, keeps the hook, and breaks one row.
-    //
-    // AND WHAT IT DOES NOT PROVE, MEASURED AND WRITTEN DOWN RATHER THAN LEFT TO
-    // BE INFERRED FROM THE FACT THAT IT PASSES. This row proves the scan bites
-    // on a hardcode written into `EmpireScreen.tsx`. The screen no longer
-    // computes the values: `empireFloorReadings` does, one file down, and the
-    // provenance walk is rooted at the screen. The same hardcode planted one hop
-    // lower — `equipment: floor.gym.state.axes.equipment` -> `equipment:
-    // 'bare-bar'` in `empireFloor.ts` — left this assertion GREEN, because
-    // `readings.equipment` still traces through `openEmpireFloor` to
-    // `createEmpireState` whatever the field holds. Every field of `readings`
-    // passes that walk regardless of its contents. What catches the lower
-    // hardcode is the row below, which is a claim about how the value MOVES; the
-    // walk's reach was widened to follow the shell hop and its ROOT was left
-    // behind, and that is a live gap rather than a closed one.
-    guarantee: 'every-drawn-empire-reading-comes-from-the-pure-state',
-    mutatedFile: 'src/shell/EmpireScreen.tsx',
-    mutated:
-      '        <Stat label={C.EMPIRE_STAT_BUCKS} value={readings.gymBucks} testID="empire-stat-bucks" />',
-    mutatedTo:
-      '        <Stat label={C.EMPIRE_STAT_BUCKS} value="0.000" testID="empire-stat-bucks" />',
-    testFile: 'src/shell/shellWiring.test.ts',
-    redAssertion: "expect(unbound, unbound.join('\\n')).toEqual([]);",
-    observed:
-      'FAIL  src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own' +
-      ' module > EVERY reading the floor draws traces to the pure constructor, not to chrome copy' +
-      ' [every-drawn-empire-reading-comes-from-the-pure-state]\n' +
-      'AssertionError: src/shell/EmpireScreen.tsx draws "empire-stat-bucks" from "0.000", which does' +
-      ' not trace to createEmpireState() imported from src/empire/ — so that row is a hardcoded' +
-      ' mock-up of GDD §5 and every value assertion in the tree would still pass:' +
-      ' expected [ Array(1) ] to deeply equal []',
-  },
-  // -------------------------------------------------------------------------
-  // Which row draws which reading — three mutants, because the pin is a set
-  // equality and a set equality has three ways of being broken
-  //
-  // THE GAP THE THREE CLOSE, and it is the one the row above declares in its
-  // own comment: the provenance walk asks whether a value reached the gym and
-  // never which field of the gym it reached. Measured at 2b6612e, with the pin
-  // absent: the first mutant below left `npx vitest run src/shell
-  // src/game/guaranteeTags.test.ts` at 139 passed and `npx tsc --noEmit` at
-  // exit 0, and the browser tool's 306 checks were green on it too, because the
-  // label it reads comes from untouched `SHELL_COPY` and the value it reads
-  // advances either way.
-  //
-  // THREE ROWS AND NOT ONE, because the three mutants break the equality in
-  // three different directions and a witness proves one assertion in one state.
-  // A swap moves an entry, a duplicate adds one, a deletion removes one — and
-  // the middle one is the only one of the three that the sibling assertion
-  // below it (`no reading the floor computes is painted nowhere`) does NOT
-  // catch, which is why both checks exist. Every one of the three was applied
-  // by hand, run, transcribed and reverted; `npx tsc --noEmit` exits 0 on all
-  // three, so none of them is caught by the typechecker.
-  // -------------------------------------------------------------------------
-  {
-    // THE SWAP. The row labelled REPUTATION draws Gym Bucks, so the screen
-    // reports one quantity under another's name and the reputation reading —
-    // recomputed on every refresh — reaches no pixel.
-    guarantee: 'each-empire-row-draws-the-reading-its-label-names',
-    mutatedFile: 'src/shell/EmpireScreen.tsx',
-    mutated:
-      '        <Stat label={C.EMPIRE_STAT_REP} value={readings.reputation} testID="empire-stat-rep" />',
-    mutatedTo:
-      '        <Stat label={C.EMPIRE_STAT_REP} value={readings.gymBucks} testID="empire-stat-rep" />',
-    testFile: 'src/shell/shellWiring.test.ts',
-    redAssertion: 'expect(drawn, report).toEqual(pinned);',
-    observed:
-      'FAIL  src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own' +
-      ' module > each row draws the reading its label names' +
-      ' [each-empire-row-draws-the-reading-its-label-names]\n' +
-      'AssertionError: src/shell/EmpireScreen.tsx pairs its rows with its readings as:\n' +
-      '  empire-stat-rep <- readings.gymBucks\n' +
-      'and DRAWN_FROM_PURE_STATE.ROWS says:\n' +
-      '  empire-stat-rep <- readings.reputation: expected [ …(6) ] to deeply equal [ …(6) ]\n' +
-      '-   "empire-stat-rep <- readings.reputation",\n' +
-      '+   "empire-stat-rep <- readings.gymBucks",',
-  },
-  {
-    // THE DUPLICATE. A second row drawing a field that is already drawn, which
-    // is the shape a copy-pasted `<Stat>` takes. THE SIBLING ASSERTION STAYS
-    // GREEN ON IT — every field is still painted, just twice — so this is the
-    // mutant that says the two checks are not one check written out twice.
-    guarantee: 'each-empire-row-draws-the-reading-its-label-names',
-    mutatedFile: 'src/shell/EmpireScreen.tsx',
-    mutated:
-      '        <Stat label={C.EMPIRE_STAT_ROSTER} value={readings.roster} testID="empire-stat-roster" />',
-    mutatedTo:
-      '        <Stat label={C.EMPIRE_STAT_ROSTER} value={readings.reputation} testID="empire-stat-roster-2" />\n' +
-      '        <Stat label={C.EMPIRE_STAT_ROSTER} value={readings.roster} testID="empire-stat-roster" />',
-    testFile: 'src/shell/shellWiring.test.ts',
-    redAssertion: 'expect(drawn, report).toEqual(pinned);',
-    observed:
-      'FAIL  src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own' +
-      ' module > each row draws the reading its label names' +
-      ' [each-empire-row-draws-the-reading-its-label-names]\n' +
-      'AssertionError: src/shell/EmpireScreen.tsx pairs its rows with its readings as:\n' +
-      '  empire-stat-roster <- readings.roster\n' +
-      '  empire-stat-roster-2 <- readings.reputation\n' +
-      'and DRAWN_FROM_PURE_STATE.ROWS says:\n' +
-      '  empire-stat-roster <- readings.roster: expected [ …(7) ] to deeply equal [ …(6) ]\n' +
-      '+   "empire-stat-roster-2 <- readings.reputation",\n' +
-      'Tests  1 failed | 51 passed (52)',
-  },
-  {
-    // THE DELETION. The reputation row removed outright, which is what a
-    // careless merge does. It is the one of the three that the OLD count pin
-    // would also have caught — `readings.length` 5 against 6 — and that pin is
-    // deleted as dominated by this equality, with the domination recorded in
-    // `shellWiring.test.ts` beside the assertion it used to sit in.
-    guarantee: 'each-empire-row-draws-the-reading-its-label-names',
-    mutatedFile: 'src/shell/EmpireScreen.tsx',
-    mutated:
-      '        <Stat label={C.EMPIRE_STAT_REP} value={readings.reputation} testID="empire-stat-rep" />\n',
-    mutatedTo: '',
-    testFile: 'src/shell/shellWiring.test.ts',
-    redAssertion: 'expect(drawn, report).toEqual(pinned);',
-    observed:
-      'FAIL  src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own' +
-      ' module > each row draws the reading its label names' +
-      ' [each-empire-row-draws-the-reading-its-label-names]\n' +
-      'AssertionError: src/shell/EmpireScreen.tsx pairs its rows with its readings as:\n' +
-      '  empire-stat-pending <- readings.pendingGymBucks\n' +
-      '  empire-stat-roster <- readings.roster\n' +
-      'and DRAWN_FROM_PURE_STATE.ROWS says:\n' +
-      '  empire-stat-rep <- readings.reputation: expected [ …(5) ] to deeply equal [ …(6) ]\n' +
-      '-   "empire-stat-rep <- readings.reputation",',
   },
   {
     // THE SAME HARDCODE AS THE ROW ABOVE, PLANTED ONE FILE LOWER, WHICH IS

@@ -31,7 +31,6 @@ import { describe, expect, it } from 'vitest';
 
 import { CAREER_TUNING } from '../career/careerTuning';
 import { appCareerPort, appLifterPort, appMeetPort, appSessionPort } from './appServer';
-import { empireFloorReadings, openEmpireFloor } from './empireFloor';
 import { meetDayFactsFromCache } from '../game/meetClient';
 import { meetResultProposal } from '../game/meetDay';
 import { playMeet } from '../game/meetPreview';
@@ -1153,592 +1152,71 @@ describe('every screen the shell mounts reports its beat', () => {
 });
 
 // ---------------------------------------------------------------------------
-// WHERE THE NUMBERS ON GDD §5's FLOOR COME FROM
+// THE LIVING FACILITY USES THE ACCOUNT PORT AND SHARED SCENE
 // ---------------------------------------------------------------------------
 
-/**
- * ===========================================================================
- * THE DEFECT THIS BLOCK EXISTS TO CLOSE: A SCREEN THAT COULD BE A MOCK-UP AND
- * NOTHING WOULD SAY SO
- * ===========================================================================
- * `EmpireScreen.tsx` opens by claiming that every reading it paints is a field
- * of the pure state object. That sentence was load-bearing — it is the whole of
- * why the Empire surface counted as GDD §5 reaching a player at all — and
- * NOTHING IN THE REPOSITORY COULD HAVE REDDENED IF IT STOPPED BEING TRUE.
- *
- * MEASURED, not suspected. Replacing `createEmpireState()` with four hardcoded
- * strings — leaving `src/shell/` with no import edge into `src/empire/`
- * anywhere — left `src/shell`'s node tests at 92 passed and `npx tsc --noEmit`
- * at exit 0. The browser tool was no better and could not have been: the four
- * testIDs holding the readings occurred exactly once each in the whole tree, in
- * the screen itself, and the check filed under "it is drawing real
- * `createEmpireState()` fields" resolved `onScreen('empire-stats')`, which is an
- * opacity read on the container. The DOM is byte-identical under the mutation,
- * so all 254 browser checks reported the same thing.
- *
- * ===========================================================================
- * AND WHY THE OBVIOUS CHECK IS NOT THE CHECK
- * ===========================================================================
- * `expect(read('empire-stat-bucks')).toBe('0')` is the shape everybody reaches
- * for first and it is worth nothing here. EVERY field on this floor is a
- * constant of the constructor — `gymBucks: 0`, `reputation: 0`, `roster: []`,
- * the opening equipment rung — and nothing in the app steps the state, because
- * GDD §11 gates §5's loop on a human ruling that has not happened. So the
- * rendered value and the hardcoded placeholder are THE SAME STRING, and a value
- * assertion cannot tell a wired screen from a mock-up of one. It is the
- * `!visible('meet-recap')` shape one level out: the two things being told apart
- * cannot differ, whatever the code does.
- *
- * SO THE PROPERTY ASSERTED IS PROVENANCE, NOT VALUE. Every element the floor
- * draws that carries both a testID and a value must have that value fed,
- * directly or through names this file can follow, by a call to the pure
- * constructor IMPORTED FROM `src/empire/`. Hardcode a string, read a
- * `SHELL_COPY` constant, or declare a local function spelled
- * `createEmpireState` and return an object literal from it, and the row is
- * named in the failure. That last one is why the import edge is resolved rather
- * than the callee matched by spelling: `progression.test.ts` shipped a seal
- * check that matched its callee by identifier TEXT, and a local shim with the
- * right name typechecked clean past it.
- *
- * ===========================================================================
- * WHAT THIS DOES NOT COVER, SO NOBODY READS IT AS MORE
- * ===========================================================================
- *   - IT IS A SCAN, NOT A RENDER. It says the value expression traces to the
- *     constructor; it does not say React drew it. That half is
- *     `tools/verify-shell-route.mjs`, which reads the four rows off the DOM of a
- *     floor a mouse opened — and which cannot see provenance, because the DOM is
- *     identical under the mutation above. Two instruments, neither sufficient.
- *   - ITS UNIT IS A ROW, NOT A GLYPH. A bare numeral typed straight into a
- *     `<Text>` child is not a row and is not reached here. What keeps that
- *     narrow is that the screen's readings are the only numbers on it, which is
- *     a fact about today's file rather than a property this enforces.
- *   - IT SAYS NOTHING ABOUT WHETHER THE READING IS CORRECT. `gymBucks` drawn
- *     into the reputation row traces perfectly and is wrong. THAT HALF IS
- *     `DRAWN_FROM_PURE_STATE.ROWS` NOW, added a round later and after the swap
- *     had been planted and measured green — the sentence above was accurate,
- *     sat here for a round, and nothing in the tree could redden on it. What
- *     the pairing pin reaches and what it still does not is written on that
- *     constant rather than restated here.
- *   - AND IT IS ROOTED AT THE SCREEN, WHICH NO LONGER PRODUCES THE VALUES. This
- *     is the sharpest of the four and it was measured rather than reasoned
- *     about. `SCREEN_FILE` is `EmpireScreen.tsx`; the screen draws
- *     `readings.<field>`, and `readings` comes from `empireFloorReadings` in
- *     `empireFloor.ts`. `tracesToPureState` asks whether the EXPRESSION reaches
- *     a call to the pure constructor, and `readings` does — through
- *     `openEmpireFloor` -> `createEmpireGym` -> `createEmpireState` — so EVERY
- *     FIELD OF `readings` PASSES THIS WALK WHATEVER IT HOLDS. Replacing
- *     `equipment: floor.gym.state.axes.equipment` with the literal `'bare-bar'`
- *     one file down left this test green, `src/shell` green and `tsc` clean.
- *     The walk was widened from direct to transitive when the arithmetic moved
- *     out of the `.tsx`, and its ROOT was left behind; widening a reach and
- *     moving a root are two edits and only one of them was made. What catches a
- *     hardcode below the screen today is `empireFloor.test.ts`, which pins how
- *     each drawn value MOVES — six rows, six claims — and not this scan.
- */
-const DRAWN_FROM_PURE_STATE = Object.freeze({
-  /**
-   * The screen whose header claims its readings come from pure state.
-   *
-   * NAMED RATHER THAN DISCOVERED, and the census below is what stops that being
-   * a list somebody has to remember: the set of shell-mounted screens reaching
-   * into the pure directory is read off `AppShell.tsx`'s own JSX and pinned, so
-   * a SECOND screen drawing §5 state announces itself here instead of inheriting
-   * nothing.
-   */
-  SCREEN_FILE: 'src/shell/EmpireScreen.tsx',
-  /** The pure constructor a reading has to come from. */
-  CONSTRUCTOR: 'createEmpireState',
-  /** ...and the directory it has to be imported from, resolved rather than spelled. */
-  PURE_DIRECTORY: 'src/empire/',
-  /** The two attributes that, together, make an element a drawn reading. */
-  VALUE_PROP: 'value',
-  TEST_ID_PROP: 'testID',
-  /** Follow budget, same number and same reason as `HAND_OFF.MAX_DEPTH`. */
-  MAX_DEPTH: 8,
-  /**
-   * WHICH READING EACH ROW DRAWS, WHICH IS A DIFFERENT QUESTION FROM WHERE IT
-   * CAME FROM.
-   *
-   * The provenance walk above answers "did this value come out of the gym". It
-   * does not answer "out of WHICH field of the gym", and its own header says so
-   * — `gymBucks` drawn into the reputation row traces perfectly and is false.
-   * Measured, at 2b6612e, before this list existed: swapping
-   * `value={readings.reputation}` for `value={readings.gymBucks}` on the row
-   * labelled REPUTATION left `npx vitest run src/shell
-   * src/game/guaranteeTags.test.ts` at 139 passed and `npx tsc --noEmit` at exit
-   * 0. The browser tool was no better and could not be: it asserts the label,
-   * which comes from untouched `SHELL_COPY`, and that the value advances, which
-   * Gym Bucks does. Nothing in the repository read the pairing, and the datum
-   * that decides it — `DrawnReading.expression` — was collected on every run and
-   * reached a failure-message template string and no predicate.
-   *
-   * A LIST AND NOT A COUNT, and the difference is what makes it bite. A count
-   * pins how many rows there are; this pins which field each of them draws, so a
-   * permutation of two rows' values is red, a second row drawing a field already
-   * drawn is red, and a row deleted is red. The count is implied by it, which is
-   * why the count that used to live here is gone — see the test below.
-   *
-   * TEXT AND NOT A RESOLVED SYMBOL, said plainly because it is the limit. Each
-   * entry is the row's testID and its value expression as written, one layer of
-   * quotes or JSX braces stripped and whitespace flattened. So it is red on a
-   * rename of a field and on a reformat that changes the expression's tokens,
-   * and it is blind to `empireFloorReadings` putting the wrong quantity in a
-   * correctly-named field one file down. That half is `empireFloor.test.ts`'s
-   * per-row value pins, which is where the equivalent hardcode was caught.
-   */
-  ROWS: Object.freeze([
-    'empire-stat-bucks <- readings.gymBucks',
-    'empire-stat-pending <- readings.pendingGymBucks',
-    'empire-stat-rep <- readings.reputation',
-    'empire-stat-roster <- readings.roster',
-    'empire-stat-equipment <- readings.equipment',
-    'empire-stat-clock <- readings.clockSeconds',
-    // GDD §5.1's away summary, ruled 2026-08-18: the forfeited span past the
-    // offline cap, a number and a state. The reading is the floor adapter's own
-    // two clocks differenced — the one row that is not a gym field — and how it
-    // MOVES is classified and swept in `empireFloor.test.ts` like the other six.
-    'empire-stat-away <- readings.forfeitedSeconds',
-  ]),
-});
-
-/** Is `name`, as used inside `module`, the pure constructor imported from `src/empire/`? */
-function isPureConstructorImport(module: Module, name: string, loader: Loader): boolean {
-  const via = importsIn(module.ast).get(name);
-  if (via === undefined || via.as !== DRAWN_FROM_PURE_STATE.CONSTRUCTOR) return false;
-  const target = loader(module.file, via.from);
-  return target !== null && target.file.startsWith(DRAWN_FROM_PURE_STATE.PURE_DIRECTORY);
-}
-
-/**
- * Does the value of `node` come, however indirectly, from a call to the pure
- * constructor?
- *
- * The same walk `readsPlatformSearch` does, with "a `location.search` read"
- * swapped for "a call to a name imported from the pure directory". Written as
- * its own function rather than as a parameterised one because the two ask
- * different questions of the leaf — one about a property access, one about a
- * call whose callee has to be resolved through the import map — and a shared
- * skeleton with two predicates hanging off it reads worse than two short walks.
- */
-function tracesToPureState(
-  node: ts.Node,
-  module: Module,
-  loader: Loader,
-  depth = 0,
-  seen: Set<string> = new Set(),
-): boolean {
-  if (depth > DRAWN_FROM_PURE_STATE.MAX_DEPTH) return false;
-  const locals = declarationsIn(module.ast);
-  const imported = importsIn(module.ast);
-  let found = false;
-  const visit = (child: ts.Node): void => {
-    if (found) return;
-    if (
-      ts.isCallExpression(child) &&
-      ts.isIdentifier(child.expression) &&
-      isPureConstructorImport(module, child.expression.text, loader)
-    ) {
-      found = true;
-      return;
-    }
-    if (ts.isIdentifier(child)) {
-      const key = `${module.file}#${child.text}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        const local = locals.get(child.text);
-        if (local !== undefined) {
-          if (tracesToPureState(local, module, loader, depth + 1, seen)) found = true;
-          return;
-        }
-        const via = imported.get(child.text);
-        if (via !== undefined) {
-          const next = loader(module.file, via.from);
-          const target = next === null ? undefined : declarationsIn(next.ast).get(via.as);
-          if (next !== null && target !== undefined) {
-            if (tracesToPureState(target, next, loader, depth + 1, seen)) found = true;
-          }
-          return;
-        }
-      }
-      return;
-    }
-    ts.forEachChild(child, visit);
-  };
-  visit(node);
-  return found;
-}
-
-/** One element the floor draws that carries a reading. */
-interface DrawnReading {
-  /** The testID as written, for the failure text. */
-  readonly testID: string;
-  /** The value expression as written, so a failure names what was drawn instead. */
-  readonly expression: string;
-  /**
-   * The property names the value expression reads, in source order.
-   *
-   * `{readings.gymBucks}` gives `['gymBucks']`. Structural rather than a
-   * substring match on the expression text, so `pendingGymBucks` is its own
-   * field and not a sighting of `gymBucks`. It is what lets the check below ask
-   * the other direction — is any field of the floor computed and painted
-   * nowhere — which a pinned list of rows on its own does not answer.
-   */
-  readonly fields: readonly string[];
-  /** Does that expression trace to the pure constructor? */
-  readonly fromPureState: boolean;
-}
-
-/**
- * One layer of quotes or JSX braces off, whitespace flattened.
- *
- * `getText` on a JSX attribute's initializer hands back `"empire-stat-rep"` for
- * a string and `{readings.reputation}` for an expression, so a pinned row would
- * otherwise be written with the delimiters in it and read worse for no gain.
- * Flattening whitespace is what stops a reformat of a wrapped `<Stat …>` from
- * reddening a pin about which field it draws — a spurious red is its own defect
- * and this is the one place it was cheap to remove.
- */
-function unwrapped(text: string): string {
-  const flattened = text.split(/\s+/).join(' ').trim();
-  const stripped = /^\{[\s\S]*\}$/.test(flattened)
-    ? flattened.slice(1, -1)
-    : /^"[\s\S]*"$/.test(flattened) || /^'[\s\S]*'$/.test(flattened)
-      ? flattened.slice(1, -1)
-      : flattened;
-  return stripped.trim();
-}
-
-/** A row as `<testID> <- <value expression>`, which is the unit `ROWS` pins. */
-function rowPairing(reading: DrawnReading): string {
-  return `${unwrapped(reading.testID)} <- ${unwrapped(reading.expression)}`;
-}
-
-/** Every property name read anywhere inside a value expression. */
-function fieldsRead(node: ts.Node, ast: ts.SourceFile): string[] {
-  const names: string[] = [];
-  const visit = (child: ts.Node): void => {
-    if (ts.isPropertyAccessExpression(child)) names.push(child.name.getText(ast));
-    ts.forEachChild(child, visit);
-  };
-  visit(node);
-  return names;
-}
-
-/**
- * Every drawn reading in a module: an element given BOTH a testID and a value.
- *
- * That pair is what makes an element a reading rather than chrome. The stats
- * container carries a testID and no value; the label is a `label` attribute and
- * not a `value`; the title and the lead are neither. So the set discovered is
- * the rows, and a fifth row inherits the check by being a row.
- */
-function drawnReadingsIn(module: Module, loader: Loader): readonly DrawnReading[] {
-  const readings: DrawnReading[] = [];
-  const visit = (node: ts.Node): void => {
-    if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
-      let testID: string | null = null;
-      let value: ts.Node | null = null;
-      for (const attribute of node.attributes.properties) {
-        if (!ts.isJsxAttribute(attribute)) continue;
-        const name = attribute.name.getText(module.ast);
-        const initializer = attribute.initializer;
-        if (initializer === undefined) continue;
-        if (name === DRAWN_FROM_PURE_STATE.TEST_ID_PROP) testID = initializer.getText(module.ast);
-        if (name === DRAWN_FROM_PURE_STATE.VALUE_PROP) value = initializer;
-      }
-      if (testID !== null && value !== null) {
-        readings.push({
-          testID,
-          expression: value.getText(module.ast),
-          fields: fieldsRead(value, module.ast),
-          fromPureState: tracesToPureState(value, module, loader),
-        });
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(module.ast);
-  return readings;
-}
-
-/**
- * Does `file` import from the pure directory, directly or through shell modules?
- *
- * TRANSITIVE, AND THAT IS NOT A LOOSENING. `EmpireScreen.tsx` used to import
- * `createEmpireState` itself; it now imports `empireFloor.ts`, which is where
- * the schedule and the `stepGym` calls live because CLAUDE.md forbids game math
- * in a `.tsx`. A direct-import census would have gone red on a change that made
- * the split BETTER, and the obvious repair — deleting the census — is the one
- * this codebase keeps recording as the way a guard dies.
- *
- * The walk is bounded to `src/shell/` on purpose rather than by a depth
- * counter: the question is "does this screen reach GDD §5", and the only route
- * from a shell screen to `src/empire/` is through the shell's own modules. A
- * whole-graph closure would parse most of the tree per screen and would answer a
- * question nobody asked.
- */
-function reachesPureState(module: Module, loader: Loader, seen: Set<string> = new Set()): boolean {
-  if (seen.has(module.file)) return false;
-  seen.add(module.file);
-  for (const via of importsIn(module.ast).values()) {
-    const target = loader(module.file, via.from);
-    if (target === null) continue;
-    if (target.file.startsWith(DRAWN_FROM_PURE_STATE.PURE_DIRECTORY)) return true;
-    if (!target.file.startsWith(`${SHELL_DIRECTORY}/`)) continue;
-    if (reachesPureState(target, loader, seen)) return true;
-  }
-  return false;
-}
-
-/** The one directory the census walks through on its way to `src/empire/`. */
-const SHELL_DIRECTORY = 'src/shell';
-
-/** The screens the shell mounts that reach into the pure directory at all. */
-function screensReadingPureState(): readonly string[] {
-  const files = [...new Set(shellScreens().map((mount) => mount.file))];
-  return files.filter((file) => reachesPureState(parseModule(file, source(file)), loadFromDisk)).sort();
-}
-
-describe('the numbers on GDD §5’s floor come from GDD §5’s own module', () => {
-  /**
-   * A loader carrying one fake pure module and one fake chrome module, so both
-   * verdicts can be driven without inventing files in the tree. The chrome
-   * module is the one that matters: it is the shape the mutation took.
-   */
-  const fixtureLoader: Loader = (_from, specifier) => {
-    if (specifier.includes('empireCore')) {
-      return parseModule(
-        'src/empire/empireCore.ts',
-        'export function createEmpireState() { return { gymBucks: 0 }; }',
-      );
-    }
-    if (specifier.includes('shellTuning')) {
-      return parseModule(
-        'src/shell/shellTuning.ts',
-        "export const SHELL_COPY = Object.freeze({ EMPIRE_BUCKS: '0' });",
-      );
-    }
-    return null;
-  };
-
-  const verdictFor = (text: string): DrawnReading | undefined =>
-    drawnReadingsIn(parseModule('src/shell/Fixture.tsx', text), fixtureLoader)[0];
-
-  const IMPORTS_PURE = "import { createEmpireState } from '../empire/empireCore';\n";
-  const IMPORTS_CHROME = "import { SHELL_COPY } from './shellTuning';\n";
-
-  it('CONTROL: the tracer sees the provenance, and sees it go missing', () => {
-    // A scan that has stopped matching agrees with every file it is pointed at,
-    // so both halves are written out. The rejections are the half that matters:
-    // every one of them is a floor that renders identically to the real one.
-    const passes = [
-      // What the screen does today: the hook's state, destructured, stringified.
-      `${IMPORTS_PURE}const [state] = useState(() => createEmpireState());\n` +
-        `const a = <Stat testID="empire-stat-bucks" value={String(state.gymBucks)} />;`,
-      // Read straight off the call, no hook in between.
-      `${IMPORTS_PURE}const a = <Stat testID="s" value={createEmpireState().axes.equipment} />;`,
-      // Through a second name, which is the restructure a regex would break on.
-      `${IMPORTS_PURE}const gym = createEmpireState();\nconst shown = String(gym.gymBucks);\n` +
-        `const a = <Stat testID="s" value={shown} />;`,
-      // Imported under a different local name.
-      `import { createEmpireState as openingGym } from '../empire/empireCore';\n` +
-        `const a = <Stat testID="s" value={String(openingGym().gymBucks)} />;`,
-    ];
-    for (const text of passes) {
-      expect(verdictFor(text)?.fromPureState, text).toBe(true);
-    }
-
-    const failures = [
-      // THE MUTATION, in the shape a critic actually planted it: the import is
-      // gone and the row draws chrome copy. `tsc` is clean and the DOM is
-      // identical.
-      `${IMPORTS_CHROME}const a = <Stat testID="empire-stat-bucks" value={SHELL_COPY.EMPIRE_BUCKS} />;`,
-      // The bare literal, which is what a mock-up looks like.
-      `${IMPORTS_PURE}const a = <Stat testID="s" value={'0'} />;`,
-      // THE LOCAL SHIM. Right spelling, no import edge — the exact shape that
-      // walked past `progression.ts`'s seal check when it matched by text.
-      `function createEmpireState() { return { gymBucks: 0 }; }\n` +
-        `const a = <Stat testID="s" value={String(createEmpireState().gymBucks)} />;`,
-      // Imported from somewhere that is not the pure directory.
-      `import { createEmpireState } from './shellTuning';\n` +
-        `const a = <Stat testID="s" value={String(createEmpireState().gymBucks)} />;`,
-      // The constructor is imported and called, and its result goes SOMEWHERE
-      // ELSE — the shape a "does the file mention createEmpireState" scan passes.
-      `${IMPORTS_PURE}${IMPORTS_CHROME}const unused = createEmpireState();\n` +
-        `const a = <Stat testID="s" value={SHELL_COPY.EMPIRE_BUCKS} />;`,
-    ];
-    for (const text of failures) {
-      expect(verdictFor(text)?.fromPureState, text).toBe(false);
-    }
-
-    // ...and the row finder itself can come back empty, so "no readings" is
-    // distinguishable from "a reading with nothing behind it". A testID with no
-    // value is chrome (the stats container); a value with no testID is not a row
-    // this file can name in a failure.
-    for (const notARow of [
-      `${IMPORTS_PURE}const a = <View testID="empire-stats">{null}</View>;`,
-      `${IMPORTS_PURE}const a = <Stat value={String(createEmpireState().gymBucks)} />;`,
-    ]) {
-      expect(drawnReadingsIn(parseModule('src/shell/Fixture.tsx', notARow), fixtureLoader)).toEqual(
-        [],
-      );
-    }
+describe('living facility wiring', () => {
+  it('hands optional facility and paired identity ports from the app into the facility', () => {
+    const shell = source('src/shell/AppShell.tsx');
+    expect(shell).toMatch(/readonly facilityPort\?: FacilityPort/);
+    expect(shell).toMatch(/readonly facilityLifterPort\?: LifterServerPort/);
+    expect(shell).toMatch(/facilityPort=\{facilityPort\}/);
+    expect(shell).toMatch(/facilityLifterPort=\{facilityLifterPort\}/);
+    const empire = source('src/shell/EmpireScreen.tsx');
+    expect(empire).toMatch(/const port = facilityPort \?\? practicePort/);
+    expect(empire).toMatch(/practice=\{facilityPort === undefined\}/);
+    expect(empire).toMatch(/assertNativeFacilityPair\(facilityPort, facilityLifterPort\)/);
+    expect(shell).toMatch(/assertNativeFacilityPair\(facilityPort, facilityLifterPort\)/);
+    expect(empire).toMatch(/lifterPort=\{facilityPort === undefined \? practiceLifterPort : facilityLifterPort\}/);
+    expect(shell).toMatch(/practiceLifterPort=\{facilityPort === undefined \? appLifterPort\(\) : undefined\}/);
+    expect(empire).toMatch(/key=\{owner\.current\.generation\}/);
+    expect(empire).not.toMatch(/appLifterPort|localSessionServer|localStorage/);
   });
 
-  it('EVERY reading the floor draws traces to the pure constructor, not to chrome copy [every-drawn-empire-reading-comes-from-the-pure-state]', () => {
-    const file = DRAWN_FROM_PURE_STATE.SCREEN_FILE;
-    const readings = drawnReadingsIn(parseModule(file, source(file)), loadFromDisk);
-
-    // THE ASSERTION THE HARDCODING MUTATION REDDENS. Nothing here reads a
-    // rendered NUMBER: every field on this floor is a constant of the
-    // constructor, so the number is the same either way and only where it came
-    // from can tell the two apart.
-    const unbound = readings
-      .filter((reading) => !reading.fromPureState)
-      .map(
-        (reading) =>
-          `${file} draws ${reading.testID} from ${reading.expression}, which does not trace to ` +
-          `${DRAWN_FROM_PURE_STATE.CONSTRUCTOR}() imported from ${DRAWN_FROM_PURE_STATE.PURE_DIRECTORY} — ` +
-          'so that row is a hardcoded mock-up of GDD §5 and every value assertion in the tree would still pass',
-      );
-    expect(unbound, unbound.join('\n')).toEqual([]);
-
-    // A COUNT PIN LIVED HERE — `readings.length` against
-    // `DRAWN_FROM_PURE_STATE.READINGS`, 6 — AND IT IS DELETED, with the
-    // domination recorded rather than the check quietly removed. The pairing
-    // test directly below pins the multiset of rows against a six-entry list,
-    // so `readings.length === 6` is implied by it in every state of the
-    // subject: no discovery can move the count while agreeing with the list.
-    // Same shape as the two deletions already recorded in this file and in
-    // `empireFloor.test.ts`, and it was compared symbolically rather than by
-    // eye — one signature is built per element of `readings`, so the pinned
-    // list's length IS this count.
-    //
-    // WHAT THE DELETION COSTS, said plainly because it is a real cost. The
-    // filter above is empty when the discovery finds nothing, so this
-    // assertion no longer carries its own non-vacuity: a scan that stopped
-    // matching passes it. What reports an empty discovery is the pairing test
-    // below — same file, same describe block, same `drawnReadingsIn` call —
-    // which goes red with `expected [] to deeply equal [ …(6) ]`. Two adjacent
-    // tests, one guard between them, and this comment is where a reader is
-    // told which one holds it.
+  it('renders the same projected command frame and keeps a continuously running simulation', () => {
+    const native = source('src/facility/native/NativeFacility.tsx');
+    expect(native.match(/buildGymSceneFrame\(/g)).toHaveLength(1);
+    expect(native).toMatch(/<NativeScene frame=\{frame\}/);
+    expect(native).toMatch(/useSceneRuntime\(state, active, reducedMotion\)/);
+    const runtime = source('src/facility/native/useSceneRuntime.ts');
+    expect(runtime).toMatch(/useState\(\(\) => createFloorSimState\(/);
+    expect(runtime.match(/createFloorSimState\(/g)).toHaveLength(1);
+    expect(runtime).toMatch(/reconcileSceneSimulation\(context, simRef\.current\)/);
+    expect(runtime).toMatch(/stepFloorSim\(simRef\.current, contextRef\.current\)/);
+    expect(runtime).toMatch(/setPresentation\(\{ sim: simRef\.current/);
+    expect(runtime).not.toMatch(/setSim\(createFloorSimState/);
   });
 
-  it('each row draws the reading its label names [each-empire-row-draws-the-reading-its-label-names]', () => {
-    // THE ASSERTION THE ROW-SWAP MUTANT REDDENS, and the one whose absence let
-    // that mutant sit green through a whole round. Provenance says a value came
-    // out of the gym; this says which field of the gym it is. Both directions
-    // in one comparison: a row drawing a different field is an entry the pin
-    // does not have AND an entry it has that the screen no longer draws, so a
-    // permutation of two rows fails twice over rather than cancelling out.
-    //
-    // SORTED, so the order the rows appear in the JSX is deliberately not
-    // pinned. Moving the REPUTATION row above the ROSTER row is a layout
-    // change with no reading behind it, and a pin that reddens on it would be
-    // friction with nothing behind it either. The cost is stated rather than
-    // implied: swapping two rows WHOLE — label, testID and value together — is
-    // invisible here, and what would see it is a screen-order check nothing in
-    // this tree makes.
-    const file = DRAWN_FROM_PURE_STATE.SCREEN_FILE;
-    const readings = drawnReadingsIn(parseModule(file, source(file)), loadFromDisk);
-    const drawn = readings.map(rowPairing).sort();
-    const pinned = [...DRAWN_FROM_PURE_STATE.ROWS].sort();
-    const report =
-      `${file} pairs its rows with its readings as:\n  ${drawn.join('\n  ')}\n` +
-      `and DRAWN_FROM_PURE_STATE.ROWS says:\n  ${pinned.join('\n  ')}`;
-
-    expect(drawn, report).toEqual(pinned);
+  it('sends edits through the facility port, blocks duplicate dispatch, and retains failed request identity', () => {
+    const native = source('src/facility/native/NativeFacility.tsx');
+    expect(native.match(/port\.facilityAction\(action, requestId\)/g)).toHaveLength(1);
+    expect(native).toMatch(/if \(busyRef\.current\) return false/);
+    expect(native).toMatch(/busyRef\.current = true/);
+    expect(native).toMatch(/prior\?\.fingerprint === fingerprint \? prior\.id/);
+    expect(native).toMatch(/failedRequest\.current = \{ fingerprint, id: requestId \}/);
+    expect(native).toMatch(/expectedLayoutRevision: state\.floor\.layoutRevision/);
+    expect(native).toMatch(/feedbackSettings\.current = \{ active, muted, reducedMotion \}/);
+    expect(native).toMatch(/const settings = feedbackSettings\.current/);
+    expect(native).toMatch(/settings\.muted \|\| settings\.reducedMotion \|\| !settings\.active \|\| AppState\.currentState !== 'active'/);
+    expect(native).toMatch(/const latest = feedbackSettings\.current/);
+    expect(native).not.toMatch(/gymViewReduce|localStorage|openEmpireFloor|advanceEmpireFloor/);
   });
 
-  it('and no reading the floor computes is painted nowhere', () => {
-    // THE OTHER DIRECTION, AND IT IS NOT THE PIN ABOVE RESTATED. That list is
-    // text this file holds; this compares the screen against the live shape of
-    // `EmpireFloorReadings`, so a seventh field added to the floor and drawn by
-    // no row is red here and green there. Symbolically: the pin above fixes the
-    // six rows and says nothing about how many fields the module produces, and
-    // this fixes the two sets equal and says nothing about which row holds
-    // which — a permutation passes here and fails above.
-    //
-    // NOT REACHED BY `empireFloor.test.ts`'s scope guard either, which was the
-    // other domination candidate. That one pins the readings' keys against the
-    // walk's own classification lists, so a field added to both stays green
-    // there while it is painted nowhere and red here.
-    const file = DRAWN_FROM_PURE_STATE.SCREEN_FILE;
-    const readings = drawnReadingsIn(parseModule(file, source(file)), loadFromDisk);
-    const painted = [...new Set(readings.flatMap((reading) => reading.fields))].sort();
-    const produced = Object.keys(empireFloorReadings(openEmpireFloor(0))).sort();
-    const report =
-      `${file} paints the fields ${painted.join(', ') || '(none)'} and empireFloorReadings ` +
-      `produces ${produced.join(', ') || '(none)'} — a field on one side and not the other is ` +
-      'either a reading computed on every refresh and painted nowhere, or a row reading ' +
-      'something the floor does not produce';
-
-    expect(painted, report).toEqual(produced);
-  });
-
-  it('and it is the ONLY screen the shell mounts that reaches into the pure module', () => {
-    // The census that keeps `SCREEN_FILE` above from being a list somebody has to
-    // remember. Read off `AppShell.tsx`'s own JSX, so a second surface drawing
-    // §5 state is announced here rather than absorbed — and so the mutation that
-    // removes the import edge altogether reddens on the way in as well as on the
-    // rows.
-    const reaching = screensReadingPureState();
-    expect(
-      reaching,
-      `${reaching.length} of the shell's mounted screens import from ${DRAWN_FROM_PURE_STATE.PURE_DIRECTORY}: ` +
-        `${reaching.join(', ') || 'none'}`,
-    ).toEqual([DRAWN_FROM_PURE_STATE.SCREEN_FILE]);
-    // A COUNT PIN WAS WRITTEN HERE AND DELETED, and the domination is recorded
-    // rather than the check quietly removed. `toEqual([SCREEN_FILE])` fixes the
-    // list exactly, so `reaching.length === 1` is implied by it in every state
-    // of the subject — no version of the tree reddens the count while the
-    // equality passes. That is the exact shape `guaranteeTags.test.ts` already
-    // had to delete once, one file over. The equality IS the census.
-  });
-
-  it('CONTROL: the census walker follows a shell hop, and stops when the hop is cut', () => {
-    // The census above went from a DIRECT import test to a transitive one when
-    // the `stepGym` calls moved out of the `.tsx` and into `empireFloor.ts`. A
-    // walker that answered "yes" to everything would agree with the tree just as
-    // happily, so both verdicts are driven here on fixtures.
-    const screen = (body: string): Module => parseModule('src/shell/Fixture.tsx', body);
-    const withHop =
-      (adapterBody: string): Loader =>
-      (_from, specifier) => {
-        if (specifier.includes('adapter')) return parseModule('src/shell/adapter.ts', adapterBody);
-        if (specifier.includes('empireCore')) {
-          return parseModule('src/empire/empireCore.ts', 'export function createEmpireState() {}');
-        }
-        if (specifier.includes('shellTuning')) {
-          return parseModule('src/shell/shellTuning.ts', 'export const SHELL_COPY = {};');
-        }
-        return null;
-      };
-    const REACHES = "import { createEmpireState } from '../empire/empireCore';\nexport const a = 1;";
-    const DOES_NOT = "import { SHELL_COPY } from './shellTuning';\nexport const a = 1;";
-
-    // One hop: screen -> shell adapter -> src/empire/.
-    expect(
-      reachesPureState(screen("import { a } from './adapter';"), withHop(REACHES)),
-      'a screen reaching §5 through one shell module',
-    ).toBe(true);
-    // The same screen when the adapter stops reaching — which is the mutation
-    // that would make the floor a mock-up without touching the screen at all.
-    expect(
-      reachesPureState(screen("import { a } from './adapter';"), withHop(DOES_NOT)),
-      'the same screen when the adapter no longer reaches §5',
-    ).toBe(false);
-    // ...and it still sees a direct import, which is the shape every other
-    // screen in the shell would take.
-    expect(reachesPureState(screen(REACHES), withHop(DOES_NOT))).toBe(true);
-    // A cycle between two shell modules terminates rather than hanging.
-    const cyclic: Loader = (from) =>
-      from === 'src/shell/a.ts'
-        ? parseModule('src/shell/b.ts', "import { x } from './a';")
-        : parseModule('src/shell/a.ts', "import { x } from './b';");
-    expect(reachesPureState(parseModule('src/shell/a.ts', "import { x } from './b';"), cyclic)).toBe(
-      false,
-    );
+  it('keeps practice sport on the existing route graph and leaves account sport unavailable', () => {
+    const shell = source('src/shell/AppShell.tsx');
+    expect(shell).toMatch(/onTrain=\{facilityPort === undefined \? leaveEmpire : undefined\}/);
+    expect(shell).toMatch(/onCareer=\{facilityPort === undefined \? careerFromEmpire : undefined\}/);
+    expect(shell).toMatch(/const empireAffordance = facilityPort === undefined \? shellEmpireAffordanceFor\(route, surfacePhase, cutIn\) : null/);
+    expect(shell).toMatch(/const sessionMounted =\s*facilityPort === undefined &&/);
+    expect(shell).toMatch(/const careerMounted =\s*facilityPort === undefined &&/);
+    expect(shell).toMatch(/const lifterMounted =\s*facilityPort === undefined &&/);
+    const empire = source('src/shell/EmpireScreen.tsx');
+    expect(empire).toMatch(/onTrain=\{facilityPort === undefined \? onTrain : undefined\}/);
+    expect(empire).toMatch(/onCareer=\{facilityPort === undefined \? onCareer : undefined\}/);
+    expect(source('src/facility/native/NativeFacility.tsx')).toContain('Account Training and Career are not connected in the native app yet.');
+    expect(shell).toMatch(/navigate\(navigate\(current, 'leave-empire'\), 'open-career'\)/);
+    expect(shell).toMatch(/serverPort=\{appSessionPort\(\)\}/);
+    expect(shell).toMatch(/serverPort=\{appCareerPort\(\)\}/);
   });
 });
 
@@ -1811,16 +1289,16 @@ describe('the Empire round trip keeps both of its surfaces', () => {
    * predicate against a fixture, without a `g` flag's `lastIndex` making the
    * second answer depend on the first.
    */
-  const EMPIRE_MOUNTED_PIN = String.raw`const empireMounted =\s*route\.surface === 'empire'\s*\|\|\s*\(isPersistentSurface\('empire'\)\s*&&\s*empireOpened\);`;
+  const EMPIRE_MOUNTED_PIN = String.raw`const empireMounted =\s*(?:facilityPort !== undefined \|\| )?route\.surface === 'empire'\s*\|\|\s*\(isPersistentSurface\('empire'\)\s*&&\s*empireOpened\);`;
 
   /** The Career surface's mount flag, whole, for the same reasons. */
-  const CAREER_MOUNTED_PIN = String.raw`const careerMounted =\s*route\.surface === 'career'\s*\|\|\s*\(isPersistentSurface\('career'\)\s*&&\s*careerOpened\);`;
+  const CAREER_MOUNTED_PIN = String.raw`const careerMounted =\s*(?:facilityPort === undefined && \()?route\.surface === 'career'\s*\|\|\s*\(isPersistentSurface\('career'\)\s*&&\s*careerOpened\)\)?;`;
 
   /** The My Lifter surface's mount flag, whole, for the same reasons. */
-  const LIFTER_MOUNTED_PIN = String.raw`const lifterMounted =\s*route\.surface === 'lifter'\s*\|\|\s*\(isPersistentSurface\('lifter'\)\s*&&\s*lifterOpened\);`;
+  const LIFTER_MOUNTED_PIN = String.raw`const lifterMounted =\s*(?:facilityPort === undefined && \()?route\.surface === 'lifter'\s*\|\|\s*\(isPersistentSurface\('lifter'\)\s*&&\s*lifterOpened\)\)?;`;
 
   /** The one place the shell tells the floor which surface is on screen. */
-  const ACTIVE_SURFACE_PIN = String.raw`active=\{route\.surface === 'empire'\}`;
+  const ACTIVE_SURFACE_PIN = String.raw`active=\{(?:facilityPort !== undefined \|\| )?route\.surface === 'empire'\}`;
 
   /** ...and the one place it tells the Career surface. */
   const CAREER_ACTIVE_PIN = String.raw`active=\{route\.surface === 'career'\}`;
@@ -1862,7 +1340,7 @@ describe('the Empire round trip keeps both of its surfaces', () => {
     // Both persistent surfaces are behind a mount flag rather than an arm of the
     // surface ternary. `sessionMounted` reads `isPersistentSurface`, so removing
     // a surface from that list really does un-mount it.
-    expect(SHELL).toMatch(/const sessionMounted =\s*isPersistentSurface\(route\.surface\)/);
+    expect(SHELL).toMatch(/const sessionMounted =\s*facilityPort === undefined && \(isPersistentSurface\(route\.surface\)/);
     // ...and the floor's flag is read WHOLE, off the raw file. See this block's
     // header: the old pattern stopped at the `||` and ran over `codeOnly`, so
     // `route.surface === 'empire' || false` — the edit that deletes persistence
@@ -2061,15 +1539,14 @@ describe('the Empire round trip keeps both of its surfaces', () => {
     // running behind a hidden surface is a re-render per tick for nothing, and a
     // floor that did NOT catch up on the way back would draw a stale reading —
     // which is the same class of defect as the beat this block is about.
-    const empireScreen = codeOnly(source('src/shell/EmpireScreen.tsx'));
-    expect(empireScreen).toMatch(/if \(!active\) return undefined;/);
-    expect(empireScreen).toMatch(/setInterval\(/);
-    expect(empireScreen).toMatch(/clearInterval\(timer\)/);
-    // The catch-up: the floor is advanced once on activation, before the timer.
-    expect(
-      empireScreen.match(/advanceEmpireFloor\(current, Date\.now\(\)\)/g)?.length,
-      'the floor is advanced on activation AND on every tick',
-    ).toBe(2);
+    const facility = source('src/facility/native/NativeFacility.tsx');
+    expect(facility).toMatch(/practicePort\?\.setForeground\(foreground\)/);
+    expect(facility).toMatch(/if \(!active\) return undefined;/);
+    expect(facility).toMatch(/setInterval\(/);
+    expect(facility).toMatch(/clearInterval\(timer\)/);
+    expect(facility).toMatch(/void actRef\.current\(\{ kind: 'check-in' \}\)/);
+    const practice = source('src/facility/native/practiceFacility.ts');
+    expect(practice).toMatch(/advancePracticeFacilityClock\(clock, now\(\), foreground \? 'online' : 'offline'\)/);
   });
 });
 

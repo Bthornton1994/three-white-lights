@@ -964,6 +964,13 @@ describe('the registered allowlist', () => {
         // Named homes for the facility and browser presentation; their TSX
         // consumers remain subject to the literal scan.
         'src/facility/empireTuning.ts',
+        'src/facility/scene/sceneTuning.ts',
+        'src/facility/scene/scenePalette.ts',
+        'src/facility/scene/equipmentData.ts',
+        'src/facility/scene/anatomyData.ts',
+        'src/facility/scene/environmentData.ts',
+        'src/facility/native/nativeTuning.ts',
+        'web/src/gymInteractionTuning.ts',
         'web/src/interfaceTuning.ts',
         'web/src/gameplayTuning.ts',
         'web/src/gameplayPalette.ts',

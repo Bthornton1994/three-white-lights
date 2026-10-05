@@ -136,6 +136,10 @@ import {
   EMPIRE_TUNING as FACILITY_TUNING,
   EMPIRE_TUNING_CLASSIFICATION as FACILITY_TUNING_CLASSIFICATION,
 } from '../facility/empireTuning';
+import { SCENE_TUNING } from '../facility/scene/sceneTuning';
+import { SCENE_PALETTE } from '../facility/scene/scenePalette';
+import { NATIVE_FACILITY_TUNING, NATIVE_FACILITY_PALETTE } from '../facility/native/nativeTuning';
+import { GYM_INTERACTION_TUNING } from '../../web/src/gymInteractionTuning';
 import * as INTERFACE_TUNING_MODULE from '../../web/src/interfaceTuning';
 import * as GAMEPLAY_TUNING_MODULE from '../../web/src/gameplayTuning';
 import { RESULT_SHEET_PALETTE } from '../../web/src/gameplayPalette';
@@ -389,6 +393,9 @@ export const TUNING = Object.freeze({
     EMPIRE_TUNING: FACILITY_TUNING,
     EMPIRE_TUNING_CLASSIFICATION: FACILITY_TUNING_CLASSIFICATION,
   }),
+  facilityScene: SCENE_TUNING,
+  nativeFacility: NATIVE_FACILITY_TUNING,
+  browserGym: GYM_INTERACTION_TUNING,
   browserInterface: INTERFACE_TUNING_MODULE,
   browserGameplay: GAMEPLAY_TUNING_MODULE,
 
@@ -432,6 +439,8 @@ export const PALETTES = Object.freeze({
   liftScreen: LIFT_PALETTE,
   sessionScreen: SESSION_PALETTE,
   meetScreen: MEET_PALETTE,
+  facilityScene: SCENE_PALETTE,
+  nativeFacility: NATIVE_FACILITY_PALETTE,
   browserResultSheet: RESULT_SHEET_PALETTE,
 });
 
@@ -458,6 +467,9 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
   shell: 'src/shell/shellTuning.ts',
   empire: 'src/empire/empireTuning.ts',
   facility: 'src/facility/empireTuning.ts',
+  facilityScene: 'src/facility/scene/sceneTuning.ts',
+  nativeFacility: 'src/facility/native/nativeTuning.ts',
+  browserGym: 'web/src/gymInteractionTuning.ts',
   browserInterface: 'web/src/interfaceTuning.ts',
   browserGameplay: 'web/src/gameplayTuning.ts',
   career: 'src/career/careerTuning.ts',
@@ -471,5 +483,7 @@ export const PALETTE_MODULES: Readonly<Record<keyof typeof PALETTES, string>> = 
   liftScreen: 'src/lift/liftPalette.ts',
   sessionScreen: 'src/session/sessionPalette.ts',
   meetScreen: 'src/meet/meetPalette.ts',
+  facilityScene: 'src/facility/scene/scenePalette.ts',
+  nativeFacility: 'src/facility/native/nativeTuning.ts',
   browserResultSheet: 'web/src/gameplayPalette.ts',
 });

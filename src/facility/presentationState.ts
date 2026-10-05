@@ -25,7 +25,7 @@
  *     lives where the renderer steps it; this contract snapshots that tick.
  *   - It does not write localStorage. PersistableFacilityTruth is the
  *     durable facility/layout subset. `facilityPersistence.ts` wraps it as
- *     the `facility` domain of the v1 save body and restores application
+ *     the `facility` domain of the versioned save body and restores application
  *     state from that body.
  *   - It does not put animation clip names, sprite ids, glows, or camera
  *     shake into simulation state.
@@ -46,6 +46,8 @@ import {
   unplacedOwnedFloorItems,
   unplacedOwnedFurnitureItems,
   type FloorState,
+  type FloorRotation,
+  type FloorLayoutEdit,
   type GridPosition,
   type GridSize,
 } from './floor';
@@ -166,6 +168,7 @@ export interface PresentationStation {
 export interface PresentationEquipment {
   readonly item: LadderEquipmentItem | SessionEquipmentItem;
   readonly kind: 'furniture' | 'session';
+  readonly rotation: FloorRotation;
   readonly placed: boolean;
   readonly position: PresentationCell | null;
   readonly footprint: GridSize;
@@ -214,7 +217,7 @@ export interface PresentationWorld {
  * In-process serialization-shape candidate. JSON-round-trippable. Not a file
  * format and not localStorage — empire modules must not touch that API.
  * `facilityPersistence.ts` wraps this payload as the `facility` domain of
- * the v1 save body and restores floor / managed gym / capability / roster
+ * the versioned save body and restores floor / managed gym / capability / roster
  * identity from the full envelope.
  */
 export interface PersistableFacilityTruth {
@@ -225,6 +228,8 @@ export interface PersistableFacilityTruth {
   readonly ladderEquipment: readonly LadderEquipmentItem[];
   readonly placements: FloorState['placements'];
   readonly furniture: FloorState['furniture'];
+  readonly layoutRevision: number;
+  readonly lastLayoutEdit: FloorLayoutEdit | null;
   readonly capability: StationCapabilityState;
   readonly identityNonce: number;
   readonly memberCount: number;
@@ -449,6 +454,7 @@ function furnitureRows(
         item: row.item,
         kind: 'furniture',
         placed: true,
+        rotation: row.rotation,
         position: freezeCell(row.position),
         footprint: row.footprint,
         condition: itemCondition(managed, row.item as ManagedEquipmentItem),
@@ -464,6 +470,7 @@ function furnitureRows(
         item,
         kind: 'furniture',
         placed: false,
+        rotation: EMPIRE_TUNING.FLOOR_ROTATIONS[0],
         position: null,
         footprint: furnitureItemFootprint(item),
         condition: itemCondition(managed, item as ManagedEquipmentItem),
@@ -488,6 +495,7 @@ function sessionRows(
         item: row.item,
         kind: 'session',
         placed: true,
+        rotation: row.rotation,
         position: freezeCell(row.position),
         footprint: row.footprint,
         condition: itemCondition(managed, row.item as ManagedEquipmentItem),
@@ -503,6 +511,7 @@ function sessionRows(
         item,
         kind: 'session',
         placed: false,
+        rotation: EMPIRE_TUNING.FLOOR_ROTATIONS[0],
         position: null,
         footprint: sessionItemFootprint(item),
         condition: itemCondition(managed, item as ManagedEquipmentItem),
@@ -614,6 +623,8 @@ export function persistableFacilityTruth(input: PresentationWorldInput): Persist
     ladderEquipment: input.managed.gym.ladder.equipment,
     placements: input.floor.placements,
     furniture: input.floor.furniture,
+    layoutRevision: input.floor.layoutRevision,
+    lastLayoutEdit: input.floor.lastLayoutEdit,
     capability: input.capability,
     identityNonce: input.roster.identityNonce,
     memberCount: input.roster.members.length,

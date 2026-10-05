@@ -269,6 +269,8 @@
 
 import { refuseWith } from './empireCore';
 import {
+  floorPositionRotation,
+  type FloorPosition,
   ambientMemberRoster,
   floorFurnitureLayout,
   floorGridSize,
@@ -431,7 +433,8 @@ export function stationChangeoverSeats(
  */
 export interface FloorStation {
   readonly ref: FloorStationRef;
-  readonly position: GridPosition;
+  readonly layoutKey: string;
+  readonly position: FloorPosition;
   readonly footprint: GridSize;
   /** Primary standing cell — `useCells[0]`. Capacity seats more on `useCells[1..]`. */
   readonly useCell: GridPosition;
@@ -463,7 +466,9 @@ export interface FloorSimMember {
   /** The station it has claimed, or null. */
   readonly target: FloorStationRef | null;
   /** Where that station was when it was claimed — the snapshot a move is detected against. */
-  readonly targetPosition: GridPosition | null;
+  readonly targetPosition: FloorPosition | null;
+  /** Geometry of the claimed station components; transient and never saved. */
+  readonly targetLayoutKey?: string | null;
   /** The tick the target was claimed — the queue's ordering key for members still walking over. */
   readonly claimedAt: number | null;
   /** The tick it reached the queue, or null while it is still walking there — the queue's primary ordering key. */
@@ -777,7 +782,8 @@ function routePlan(context: FloorSimContext): RoutePlan {
 
   const occupants: {
     readonly ref: FloorStationRef;
-    readonly position: GridPosition;
+    readonly position: FloorPosition;
+    readonly layoutKey: string;
     readonly footprint: GridSize;
     readonly benches: readonly { readonly position: GridPosition; readonly footprint: GridSize }[];
   }[] = [];
@@ -805,6 +811,7 @@ function routePlan(context: FloorSimContext): RoutePlan {
     occupants.push({
       ref: Object.freeze({ kind: 'training', station: COMPETITION_BENCH_BAY }),
       position: bay.primary.position,
+      layoutKey: bay.components.map(component => `${component.item}:${component.position.x},${component.position.y}@${component.rotation}`).join('|'),
       footprint: bay.primary.footprint,
       benches: bay.benches,
     });
@@ -814,6 +821,7 @@ function routePlan(context: FloorSimContext): RoutePlan {
     occupants.push({
       ref: { kind: 'fixed', item: row.item },
       position: row.position,
+      layoutKey: `${row.position.x},${row.position.y}@${row.rotation}`,
       footprint: row.footprint,
       benches: Object.freeze([{ position: row.position, footprint: row.footprint }]),
     });
@@ -822,6 +830,7 @@ function routePlan(context: FloorSimContext): RoutePlan {
     occupants.push({
       ref: { kind: 'session', item: row.item },
       position: row.position,
+      layoutKey: `${row.position.x},${row.position.y}@${row.rotation}`,
       footprint: row.footprint,
       benches: Object.freeze([{ position: row.position, footprint: row.footprint }]),
     });
@@ -922,6 +931,7 @@ function routePlan(context: FloorSimContext): RoutePlan {
       Object.freeze({
         ref: Object.freeze(occupant.ref),
         position: occupant.position,
+        layoutKey: occupant.layoutKey,
         footprint: occupant.footprint,
         useCell: primary,
         useCells,
@@ -1323,6 +1333,7 @@ function interrupt(member: FloorSimMember, cause: FloorSimInterruption): FloorSi
     progress: 0,
     target: null,
     targetPosition: null,
+    targetLayoutKey: null,
     claimedAt: null,
     queuedAt: null,
     queueArrivedAt: null,
@@ -1366,7 +1377,7 @@ function applyInterruptions(
       settled.push(interrupt(member, 'target-removed'));
       continue;
     }
-    if (!sameCell(station.position, member.targetPosition)) {
+    if (!sameCell(station.position, member.targetPosition) || floorPositionRotation(station.position) !== floorPositionRotation(member.targetPosition) || (member.targetLayoutKey != null && member.targetLayoutKey !== station.layoutKey)) {
       settled.push(interrupt(member, 'target-moved'));
       continue;
     }
@@ -1419,6 +1430,7 @@ function applyClaims(
         ...member,
         target: Object.freeze(chosen.ref),
         targetPosition: chosen.position,
+        targetLayoutKey: chosen.layoutKey,
         claimedAt: tick,
         strandedAt: null,
       });
@@ -1528,6 +1540,7 @@ function advanceMember(
       timer: EMPIRE_TUNING.FLOOR_SIM_LEAVING_TICKS,
       target: null,
       targetPosition: null,
+      targetLayoutKey: null,
       claimedAt: null,
       queuedAt: null,
       queueArrivedAt: null,
@@ -1733,6 +1746,7 @@ export function createFloorSimState(context: FloorSimContext, seed: number): Flo
           progress: 0,
           target: null,
           targetPosition: null,
+          targetLayoutKey: null,
           claimedAt: null,
           queuedAt: null,
           queueArrivedAt: null,

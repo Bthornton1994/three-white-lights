@@ -7,8 +7,8 @@
  * those bytes through a store they own. Encode/decode stay synchronous.
  *
  * WHAT THIS MODULE IS. Application persistence around a versioned envelope.
- * `PersistableFacilityTruth` remains the facility/layout subset. The v1
- * body is `FacilitySaveTruthV1`: facility plus clock, management, week, and
+ * `PersistableFacilityTruth` remains the facility/layout subset. The v2
+ * body is `FacilitySaveTruthV2`: facility plus clock, management, week, and
  * living-member history. Host wiring of those bytes is `src/shell/`, not
  * this file.
  *
@@ -50,6 +50,12 @@ import { EMPIRE_TUNING } from './empireTuning';
 import {
   requireFloorState,
   type FloorState,
+  type FloorPosition,
+  type OrientedFloorPosition,
+  type FloorLayoutEdit,
+  type FloorEditTarget,
+  orientedFloorPosition,
+  isFloorRotation,
   type GridPosition,
 } from './floor';
 import {
@@ -111,10 +117,10 @@ import {
   type StationAxisLevels,
   type StationCapabilityState,
 } from './stationCapability';
-import { COMPETITION_BENCH_BAY } from './trainingStation';
+import { COMPETITION_BENCH_BAY, competitionBenchBay } from './trainingStation';
 
 export const FACILITY_SAVE_KIND = 'gym-empire-facility' as const;
-export const FACILITY_SAVE_SCHEMA_VERSION = 1 as const;
+export const FACILITY_SAVE_SCHEMA_VERSION = EMPIRE_TUNING.FLOOR_SAVE_SCHEMA_VERSION;
 
 /** Keys of `PersistableFacilityTruth`. A new durable facility field must join this list. */
 export const DURABLE_FACILITY_TRUTH_FIELDS = Object.freeze([
@@ -125,12 +131,20 @@ export const DURABLE_FACILITY_TRUTH_FIELDS = Object.freeze([
   'ladderEquipment',
   'placements',
   'furniture',
+  'layoutRevision',
+  'lastLayoutEdit',
   'capability',
   'identityNonce',
   'memberCount',
 ] as const);
 
-/** Top-level domains of the v1 save body. */
+const LEGACY_DURABLE_FACILITY_TRUTH_FIELDS = DURABLE_FACILITY_TRUTH_FIELDS.filter(field => field !== 'layoutRevision' && field !== 'lastLayoutEdit');
+const POSITION_FIELDS = Object.freeze(['x', 'y', 'rotation'] as const);
+const LEGACY_POSITION_FIELDS = Object.freeze(['x', 'y'] as const);
+const LAYOUT_EDIT_FIELDS = Object.freeze(['target', 'previous', 'current', 'appliedRevision'] as const);
+const LAYOUT_TARGET_FIELDS = Object.freeze(['kind', 'item'] as const);
+
+/** Top-level domains of the versioned save body. */
 export const FACILITY_SAVE_TRUTH_DOMAINS = Object.freeze([
   'facility',
   'clock',
@@ -219,7 +233,7 @@ export interface PersistableLivingMember {
   readonly recentVisits: readonly ServiceVisitRecord[];
 }
 
-export interface FacilitySaveTruthV1 {
+export interface FacilitySaveTruthV2 {
   readonly facility: PersistableFacilityTruth;
   readonly clock: {
     readonly collectedAt: number;
@@ -244,10 +258,17 @@ export interface FacilitySaveTruthV1 {
   };
 }
 
+export type FacilitySaveTruthV1 = Omit<FacilitySaveTruthV2, 'facility'> & {
+  readonly facility: Omit<PersistableFacilityTruth, 'layoutRevision' | 'lastLayoutEdit' | 'placements' | 'furniture'> & {
+    readonly placements: Readonly<Partial<Record<SessionEquipmentItem, GridPosition>>>;
+    readonly furniture: Readonly<Partial<Record<LadderEquipmentItem, GridPosition>>>;
+  };
+};
+
 export interface FacilitySaveEnvelope {
   readonly kind: typeof FACILITY_SAVE_KIND;
   readonly schemaVersion: typeof FACILITY_SAVE_SCHEMA_VERSION;
-  readonly truth: FacilitySaveTruthV1;
+  readonly truth: FacilitySaveTruthV2;
 }
 
 /**
@@ -276,7 +297,7 @@ export interface RestoredFacility {
   readonly managed: ManagedGym;
   readonly capability: StationCapabilityState;
   readonly roster: LivingMemberRoster;
-  readonly week: FacilitySaveTruthV1['week'];
+  readonly week: FacilitySaveTruthV2['week'];
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -368,8 +389,8 @@ function exactKeys(value: Record<string, unknown>, fields: readonly string[]): b
   return true;
 }
 
-function freezeCell(cell: GridPosition): GridPosition {
-  return Object.freeze({ x: cell.x, y: cell.y });
+function freezeCell(cell: FloorPosition): OrientedFloorPosition {
+  return orientedFloorPosition(cell);
 }
 
 function sortedKeys(record: Readonly<Record<string, unknown>>): readonly string[] {
@@ -377,9 +398,9 @@ function sortedKeys(record: Readonly<Record<string, unknown>>): readonly string[
 }
 
 function freezePositionMap<K extends string>(
-  record: Readonly<Partial<Record<K, GridPosition>>>,
-): Readonly<Partial<Record<K, GridPosition>>> {
-  const next: Partial<Record<K, GridPosition>> = {};
+  record: Readonly<Partial<Record<K, FloorPosition>>>,
+): Readonly<Partial<Record<K, FloorPosition>>> {
+  const next: Partial<Record<K, FloorPosition>> = {};
   const keys = sortedKeys(record as Readonly<Record<string, unknown>>);
   for (let index = 0; index < keys.length; index += 1) {
     const key = keys[index];
@@ -422,6 +443,10 @@ function freezeCondition(condition: ConditionByItem): ConditionByItem {
   return Object.freeze(next);
 }
 
+function canonicalLayoutEdit(edit: FloorLayoutEdit | null): FloorLayoutEdit | null {
+  return edit === null ? null : Object.freeze({ target: Object.freeze({ ...edit.target }), previous: edit.previous === null ? null : freezeCell(edit.previous), current: edit.current === null ? null : freezeCell(edit.current), appliedRevision: edit.appliedRevision });
+}
+
 function canonicalFacility(truth: PersistableFacilityTruth): PersistableFacilityTruth {
   return Object.freeze({
     rung: truth.rung,
@@ -431,6 +456,8 @@ function canonicalFacility(truth: PersistableFacilityTruth): PersistableFacility
     ladderEquipment: Object.freeze([...truth.ladderEquipment]),
     placements: freezePositionMap(truth.placements),
     furniture: freezePositionMap(truth.furniture),
+    layoutRevision: truth.layoutRevision,
+    lastLayoutEdit: canonicalLayoutEdit(truth.lastLayoutEdit),
     capability: freezeCapability(truth.capability),
     identityNonce: truth.identityNonce,
     memberCount: truth.memberCount,
@@ -511,7 +538,7 @@ function canonicalWeekReport(report: GymWeekReport): GymWeekReport {
   });
 }
 
-function canonicalGymTruth(truth: FacilitySaveTruthV1): FacilitySaveTruthV1 {
+function canonicalGymTruth(truth: FacilitySaveTruthV2): FacilitySaveTruthV2 {
   const strikes: CountedDecisionRecord[] = [];
   for (let index = 0; index < truth.management.strikes.length; index += 1) {
     const row = truth.management.strikes[index];
@@ -572,24 +599,37 @@ function canonicalGymTruth(truth: FacilitySaveTruthV1): FacilitySaveTruthV1 {
     }),
   });
 }
-function readCell(value: unknown): GridPosition | null {
-  if (!isRecord(value)) return null;
-  if (!isWholeNumber(value.x) || !isWholeNumber(value.y)) return null;
-  if (value.x < 0 || value.y < 0) return null;
-  return freezeCell({ x: value.x, y: value.y });
+function readCell(value: unknown, legacy = false): OrientedFloorPosition | null {
+  if (!isRecord(value) || !exactKeys(value, legacy ? LEGACY_POSITION_FIELDS : POSITION_FIELDS)) return null;
+  if (!Number.isSafeInteger(value.x) || !Number.isSafeInteger(value.y) || (value.x as number) < 0 || (value.y as number) < 0) return null;
+  if (!legacy && !isFloorRotation(value.rotation)) return null;
+  return freezeCell({ x: value.x as number, y: value.y as number, rotation: legacy ? EMPIRE_TUNING.FLOOR_ROTATIONS[0] : value.rotation as OrientedFloorPosition['rotation'] });
+}
+function readLayoutEdit(value: unknown): FloorLayoutEdit | null | undefined {
+  if (value === null) return null;
+  if (!isRecord(value) || !exactKeys(value, LAYOUT_EDIT_FIELDS) || !isRecord(value.target) || !exactKeys(value.target, LAYOUT_TARGET_FIELDS)) return undefined;
+  if (!Number.isSafeInteger(value.appliedRevision) || (value.appliedRevision as number) <= EMPIRE_TUNING.FLOOR_LAYOUT_INITIAL_REVISION) return undefined;
+  let target: FloorEditTarget;
+  if (value.target.kind === 'session' && isSessionItem(value.target.item)) target = { kind: 'session', item: value.target.item };
+  else if (value.target.kind === 'furniture' && isLadderItem(value.target.item)) target = { kind: 'furniture', item: value.target.item };
+  else return undefined;
+  const previous = value.previous === null ? null : readCell(value.previous);
+  const current = value.current === null ? null : readCell(value.current);
+  if ((previous === null && value.previous !== null) || (current === null && value.current !== null)) return undefined;
+  return canonicalLayoutEdit({ target, previous, current, appliedRevision: value.appliedRevision as number });
 }
 
 function readSessionPlacements(
-  value: unknown,
-): Readonly<Partial<Record<SessionEquipmentItem, GridPosition>>> | null {
+  value: unknown, legacy = false,
+): Readonly<Partial<Record<SessionEquipmentItem, FloorPosition>>> | null {
   if (!isRecord(value)) return null;
-  const next: Partial<Record<SessionEquipmentItem, GridPosition>> = {};
+  const next: Partial<Record<SessionEquipmentItem, FloorPosition>> = {};
   const keys = Object.keys(value);
   for (let index = 0; index < keys.length; index += 1) {
     const key = keys[index];
     if (key === undefined) continue;
     if (!isSessionItem(key)) return null;
-    const cell = readCell(value[key]);
+    const cell = readCell(value[key], legacy);
     if (cell === null) return null;
     next[key] = cell;
   }
@@ -597,16 +637,16 @@ function readSessionPlacements(
 }
 
 function readFurnitureMap(
-  value: unknown,
-): Readonly<Partial<Record<LadderEquipmentItem, GridPosition>>> | null {
+  value: unknown, legacy = false,
+): Readonly<Partial<Record<LadderEquipmentItem, FloorPosition>>> | null {
   if (!isRecord(value)) return null;
-  const next: Partial<Record<LadderEquipmentItem, GridPosition>> = {};
+  const next: Partial<Record<LadderEquipmentItem, FloorPosition>> = {};
   const keys = Object.keys(value);
   for (let index = 0; index < keys.length; index += 1) {
     const key = keys[index];
     if (key === undefined) continue;
-    if (!isLadderItem(key)) return null;
-    const cell = readCell(value[key]);
+    if (!isLadderItem(key) || (legacy && !(EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT as readonly string[]).includes(key))) return null;
+    const cell = readCell(value[key], legacy);
     if (cell === null) return null;
     next[key] = cell;
   }
@@ -672,9 +712,9 @@ function readLadderEquipment(value: unknown): readonly LadderEquipmentItem[] | n
   return Object.freeze(items);
 }
 
-function readFacility(value: unknown): PersistableFacilityTruth | null {
+function readFacility(value: unknown, legacy = false): PersistableFacilityTruth | null {
   if (!isRecord(value)) return null;
-  if (!exactKeys(value, DURABLE_FACILITY_TRUTH_FIELDS)) return null;
+  if (!exactKeys(value, legacy ? LEGACY_DURABLE_FACILITY_TRUTH_FIELDS : DURABLE_FACILITY_TRUTH_FIELDS)) return null;
   if (!isLadderRung(value.rung)) return null;
   if (!isNonNegativeNumber(value.gymBucks)) return null;
   if (!isNonNegativeNumber(value.acceleratedGymBucks)) return null;
@@ -686,9 +726,13 @@ function readFacility(value: unknown): PersistableFacilityTruth | null {
     if (item === undefined) continue;
     if (!ladderEquipment.includes(item)) return null;
   }
-  const placements = readSessionPlacements(value.placements);
-  const furniture = readFurnitureMap(value.furniture);
+  const placements = readSessionPlacements(value.placements, legacy);
+  const furniture = readFurnitureMap(value.furniture, legacy);
   if (placements === null || furniture === null) return null;
+  const layoutRevision = legacy ? EMPIRE_TUNING.FLOOR_LAYOUT_INITIAL_REVISION : value.layoutRevision;
+  if (!Number.isSafeInteger(layoutRevision) || (layoutRevision as number) < 0) return null;
+  const lastLayoutEdit = legacy ? null : readLayoutEdit(value.lastLayoutEdit);
+  if (lastLayoutEdit === undefined) return null;
   const capability = readCapability(value.capability);
   if (capability === null) return null;
   if (!isNonNegativeWhole(value.identityNonce)) return null;
@@ -702,6 +746,8 @@ function readFacility(value: unknown): PersistableFacilityTruth | null {
       ladderEquipment,
       placements,
       furniture,
+      layoutRevision: layoutRevision as number,
+      lastLayoutEdit,
       capability,
       identityNonce: value.identityNonce,
       memberCount: value.memberCount,
@@ -709,7 +755,7 @@ function readFacility(value: unknown): PersistableFacilityTruth | null {
   );
 }
 
-function readClock(value: unknown): FacilitySaveTruthV1['clock'] | null {
+function readClock(value: unknown): FacilitySaveTruthV2['clock'] | null {
   if (!isRecord(value)) return null;
   if (!exactKeys(value, CLOCK_FIELDS)) return null;
   if (!isNonNegativeWhole(value.collectedAt)) return null;
@@ -914,7 +960,7 @@ function readLivingMember(value: unknown, expectedOrdinal: number): PersistableL
 function readManagement(
   value: unknown,
   owned: readonly ManagedEquipmentItem[],
-): FacilitySaveTruthV1['management'] | null {
+): FacilitySaveTruthV2['management'] | null {
   if (!isRecord(value)) return null;
   if (!exactKeys(value, MANAGEMENT_FIELDS)) return null;
   const condition = readCondition(value.condition, owned);
@@ -942,7 +988,7 @@ function readManagement(
   });
 }
 
-function readWeek(value: unknown): FacilitySaveTruthV1['week'] | null {
+function readWeek(value: unknown): FacilitySaveTruthV2['week'] | null {
   if (!isRecord(value)) return null;
   if (!exactKeys(value, WEEK_FIELDS)) return null;
   const allocation = readAllocation(value.allocation);
@@ -965,7 +1011,7 @@ function readWeek(value: unknown): FacilitySaveTruthV1['week'] | null {
 function readLiving(
   value: unknown,
   memberCount: number,
-): FacilitySaveTruthV1['living'] | null {
+): FacilitySaveTruthV2['living'] | null {
   if (!isRecord(value)) return null;
   if (!exactKeys(value, LIVING_FIELDS)) return null;
   if (!Array.isArray(value.members)) return null;
@@ -983,10 +1029,10 @@ function ownedFromFacility(facility: PersistableFacilityTruth): readonly Managed
   return Object.freeze([...facility.ladderEquipment, ...facility.sessionEquipment]);
 }
 
-function readGymTruth(value: unknown): FacilitySaveTruthV1 | null {
+function readGymTruth(value: unknown, legacy = false): FacilitySaveTruthV2 | null {
   if (!isRecord(value)) return null;
   if (!exactKeys(value, FACILITY_SAVE_TRUTH_DOMAINS)) return null;
-  const facility = readFacility(value.facility);
+  const facility = readFacility(value.facility, legacy);
   if (facility === null) return null;
   const clock = readClock(value.clock);
   if (clock === null) return null;
@@ -1006,7 +1052,7 @@ function readGymTruth(value: unknown): FacilitySaveTruthV1 | null {
     }),
   );
 }
-function livingFromRoster(roster: LivingMemberRoster): FacilitySaveTruthV1['living'] {
+function livingFromRoster(roster: LivingMemberRoster): FacilitySaveTruthV2['living'] {
   const members: PersistableLivingMember[] = [];
   for (let index = 0; index < roster.members.length; index += 1) {
     const member = roster.members[index];
@@ -1025,8 +1071,8 @@ function livingFromRoster(roster: LivingMemberRoster): FacilitySaveTruthV1['livi
   return Object.freeze({ members: Object.freeze(members) });
 }
 
-/** Pull the v1 save body off a live gym. Does not call upgrade or buy paths. */
-export function persistableGymTruthFromGymView(state: GymViewState): FacilitySaveTruthV1 {
+/** Pull the versioned save body off a live gym. Does not call upgrade or buy paths. */
+export function persistableGymTruthFromGymView(state: GymViewState): FacilitySaveTruthV2 {
   requireManagedGym(state.managed);
   requireFloorState(state.floor, state.managed.gym.sessionEquipment);
   requireWeekAllocation(state.allocation);
@@ -1052,6 +1098,8 @@ export function persistableGymTruthFromGymView(state: GymViewState): FacilitySav
       ladderEquipment: gym.ladder.equipment,
       placements: state.floor.placements,
       furniture: state.floor.furniture,
+      layoutRevision: state.floor.layoutRevision,
+      lastLayoutEdit: state.floor.lastLayoutEdit,
       capability: state.capability,
       identityNonce: state.livingMembers.identityNonce,
       memberCount: state.livingMembers.members.length,
@@ -1087,8 +1135,8 @@ export function persistableTruthFromGymView(state: GymViewState): PersistableFac
   return persistableGymTruthFromGymView(state).facility;
 }
 
-/** Deterministic JSON for the v1 envelope. Same truth, same bytes. */
-export function encodeFacilitySave(truth: FacilitySaveTruthV1): string {
+/** Deterministic JSON for the v2 envelope. Same truth, same bytes. */
+export function encodeFacilitySave(truth: FacilitySaveTruthV2): string {
   const envelope: FacilitySaveEnvelope = Object.freeze({
     kind: FACILITY_SAVE_KIND,
     schemaVersion: FACILITY_SAVE_SCHEMA_VERSION,
@@ -1114,13 +1162,13 @@ export function decodeFacilitySave(bytes: string): FacilityLoadResult {
   if (parsed.kind !== FACILITY_SAVE_KIND) {
     return Object.freeze({ kind: 'refused', reason: 'unknown-kind' });
   }
-  if (parsed.schemaVersion !== FACILITY_SAVE_SCHEMA_VERSION) {
+  if (parsed.schemaVersion !== FACILITY_SAVE_SCHEMA_VERSION && parsed.schemaVersion !== EMPIRE_TUNING.FLOOR_SAVE_LEGACY_SCHEMA_VERSION) {
     return Object.freeze({ kind: 'refused', reason: 'unsupported-version' });
   }
   if (!exactKeys(parsed, ENVELOPE_FIELDS)) {
     return Object.freeze({ kind: 'refused', reason: 'incoherent' });
   }
-  const truth = readGymTruth(parsed.truth);
+  const truth = readGymTruth(parsed.truth, parsed.schemaVersion === EMPIRE_TUNING.FLOOR_SAVE_LEGACY_SCHEMA_VERSION);
   if (truth === null) {
     return Object.freeze({ kind: 'refused', reason: 'incoherent' });
   }
@@ -1149,7 +1197,7 @@ export function loadFacilitySave(bytes: string | null): FacilityLoadResult {
 
 function rosterFromLiving(
   facility: PersistableFacilityTruth,
-  living: FacilitySaveTruthV1['living'],
+  living: FacilitySaveTruthV2['living'],
 ): LivingMemberRoster {
   const members: LivingGymMember[] = [];
   for (let index = 0; index < living.members.length; index += 1) {
@@ -1187,7 +1235,7 @@ function rosterFromLiving(
  * Does not call `upgradeStation` or any buy path. Writes saved collectedAt
  * rather than zeroing the idle clock.
  */
-export function restoreDurableFacility(truth: FacilitySaveTruthV1): RestoredFacility {
+export function restoreDurableFacility(truth: FacilitySaveTruthV2): RestoredFacility {
   const facility = truth.facility;
   const ladder = requireLadderState(
     Object.freeze({
@@ -1223,9 +1271,14 @@ export function restoreDurableFacility(truth: FacilitySaveTruthV1): RestoredFaci
       rung: facility.rung,
       placements: freezePositionMap(facility.placements),
       furniture: freezePositionMap(facility.furniture),
+      layoutRevision: facility.layoutRevision,
+      lastLayoutEdit: canonicalLayoutEdit(facility.lastLayoutEdit),
     }),
     facility.sessionEquipment,
+    facility.ladderEquipment,
   );
+  const bay = competitionBenchBay(floor, facility.ladderEquipment, stationLevels(facility.capability, COMPETITION_BENCH_BAY).capacity);
+  if (stationLevels(facility.capability, COMPETITION_BENCH_BAY).capacity > 0 && bay.complete && bay.expansion === null) refuseWith('facility save capacity has no second physical bench position');
   const roster = rosterFromLiving(facility, truth.living);
   if (roster.identityNonce !== facility.identityNonce) {
     refuseWith('facility save identity nonce did not survive restore');
@@ -1271,7 +1324,7 @@ export function presentationInputFromRestored(
   });
 }
 
-export function restoreGymViewState(truth: FacilitySaveTruthV1): GymViewState {
+export function restoreGymViewState(truth: FacilitySaveTruthV2): GymViewState {
   const restored = restoreDurableFacility(truth);
   const opening = createGymViewState();
   requireWeekAllocation(restored.week.allocation);
@@ -1296,6 +1349,6 @@ export function bayAxisLevels(capability: StationCapabilityState): StationAxisLe
   return stationLevels(capability, COMPETITION_BENCH_BAY);
 }
 
-export function restoredPresentationWorld(truth: FacilitySaveTruthV1) {
+export function restoredPresentationWorld(truth: FacilitySaveTruthV2) {
   return presentationWorld(presentationInputFromRestored(restoreDurableFacility(truth)));
 }

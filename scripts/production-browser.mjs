@@ -190,8 +190,8 @@ async function mobileStory() {
   });
 
   for (const [button, heading, screenshot] of [
-    ['Shop', 'Make room for more.', '02-phone-shop'],
-    ['Staff', 'Good people. Great gym.', '03-phone-staff'],
+    ['Shop', 'Equipment shop', '02-phone-shop'],
+    ['Staff', 'Your team', '03-phone-staff'],
   ]) {
     await check(`phone: ${button} is reached through the normal navigation and has an exit`, async () => {
       await (await visibleButton(page, button)).click();
@@ -204,38 +204,27 @@ async function mobileStory() {
     });
   }
 
-  await check('phone: Build mode selects a tile through its real controls and returns to the gym', async () => {
+  await check('phone: Build uses the shared world and accessible placement, then returns to the living gym', async () => {
+    const world = page.getByTestId('gym-world');
+    await waitUntil(() => world.getAttribute('data-sim-tick'), 'The living scene did not advance.');
+    const memberIds = await world.getAttribute('data-member-ids');
+    const tick = Number(await world.getAttribute('data-sim-tick'));
     await (await visibleButton(page, 'Build gym')).click();
-    await page.getByRole('heading', { name: 'Build your gym.', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Build your gym', exact: true }).waitFor();
+    await (await visibleButton(page, 'Select Power bar')).click();
+    await page.getByText('Keyboard and exact placement', { exact: true }).click();
+    await page.getByLabel('Column', { exact: true }).fill('1');
+    await page.getByLabel('Row', { exact: true }).fill('4');
     const place = await visibleButton(page, 'Place item');
-    assert.equal(await place.isDisabled(), true, 'Place item must require an explicit tile');
-    await page.getByLabel('Equipment', { exact: true }).selectOption('power-bar');
-    const tiles = page.locator('.floor-grid button');
-    let selectedTile = null;
-    for (const tile of await tiles.all()) {
-      const exposed = await tile.evaluate(element => {
-        const rect = element.getBoundingClientRect();
-        const x = rect.left + rect.width / 2;
-        const y = rect.top + rect.height / 2;
-        if (rect.width === 0 || rect.height === 0 || x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return false;
-        const hit = document.elementFromPoint(x, y);
-        return hit === element || element.contains(hit);
-      });
-      if (!exposed) continue;
-      await tile.click();
-      if (await place.isEnabled()) {
-        selectedTile = await tile.getAttribute('aria-label');
-        break;
-      }
-    }
-    assert.ok(selectedTile, 'No exposed floor tile accepts the owned Power bar');
     await place.click();
-    await page.getByRole('status').filter({ hasText: 'placed' }).waitFor();
+    await page.getByRole('status').filter({ hasText: 'Power bar placed.' }).waitFor();
+    await waitUntil(async () => Number(await world.getAttribute('data-sim-tick')) > tick, 'Build restarted or stopped the floor simulation.');
+    assert.equal(await world.getAttribute('data-member-ids'), memberIds, 'Build changed member identities.');
     await noProtectedPracticeStorage(page);
     await shot(page, '04-phone-build');
     await (await visibleButton(page, 'Gym')).click();
     await page.getByRole('region', { name: 'Your gym', exact: true }).waitFor();
-    return { selectedTile };
+    return { placement: { item: 'power-bar', column: 1, row: 4 }, memberIdsPreserved: true };
   });
 
   await check('phone: Career and the gym action expose create-lifter → calendar without Settings or saved storage', async () => {

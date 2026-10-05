@@ -1477,6 +1477,14 @@ export const EMPIRE_TUNING = Object.freeze({
   // abstract grid tiles, not a literal foot conversion.
   // -------------------------------------------------------------------------
 
+  /** Supported orientations in degrees, shared by placement, saves, and scene readers. */
+  FLOOR_ROTATIONS: Object.freeze([0, 90, 180, 270] as const),
+  FLOOR_LAYOUT_INITIAL_REVISION: 0,
+  FLOOR_SAVE_SCHEMA_VERSION: 2,
+  FLOOR_SAVE_LEGACY_SCHEMA_VERSION: 1,
+  /** Purchased rack body; the opening kit remains the separate fixed-layout seed below. */
+  FLOOR_SQUAT_RACK_FOOTPRINT: Object.freeze({ width: 3, height: 4 }),
+
   /**
    * The floor grid a player builds into at each ladder rung, width x height
    * in tiles — GDD §5.13's own proposal, reasoned from real-world footprint
@@ -1541,11 +1549,9 @@ export const EMPIRE_TUNING = Object.freeze({
    * tall, against an 8x6 floor.
    *
    * Keyed by exactly `LADDER_STARTING_EQUIPMENT`, not the wider
-   * `LADDER_EQUIPMENT_ITEMS` — `squat-rack` is a real purchase (flat price,
-   * gated by rung, refusable) and stays in the ladder shop with no floor
-   * furniture of its own; only the baseline every `createLadderState()`
-   * already owns for free is fixed furniture. `floor.test.ts` drives both
-   * directions of that key set.
+   * `LADDER_EQUIPMENT_ITEMS`: only the baseline owned on opening day seeds
+   * this layout. The purchased squat rack has its own placeable footprint
+   * in `FLOOR_SQUAT_RACK_FOOTPRINT` and enters storage after purchase.
    */
   FLOOR_FIXED_FURNITURE_LAYOUT: Object.freeze({
     'power-bar': Object.freeze({
@@ -2881,6 +2887,11 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY: 'knob',
   MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE: 'budget',
 
+  FLOOR_ROTATIONS: 'structural',
+  FLOOR_LAYOUT_INITIAL_REVISION: 'structural',
+  FLOOR_SAVE_SCHEMA_VERSION: 'structural',
+  FLOOR_SAVE_LEGACY_SCHEMA_VERSION: 'structural',
+  FLOOR_SQUAT_RACK_FOOTPRINT: 'knob',
   FLOOR_GRID_SIZE: 'knob',
   SESSION_EQUIPMENT_FOOTPRINT: 'knob',
   FLOOR_FIXED_FURNITURE_LAYOUT: 'knob',

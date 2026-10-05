@@ -78,6 +78,12 @@ therefore does not claim a bar is met the way A does — C's increments are
 **ready for review** until a human or an A critic has actually looked. Do not
 treat C's own pass as verification.
 
+### CODEX GYM REBUILD — OWNER AUTHORIZED, 2026-10-03
+
+The owner supplied `docs/design/gym-empire/EXECUTION.md` and three explicit Iron & Amber references. This scope rebuilds the gym presentation, direct placement, native parity, and necessary layout persistence through existing facility boundaries. It does not reopen accepted lift/meet/math rules. Work occurs on the authorized review branch; PR89 stays draft, open, and unmerged.
+
+Builders are `gym_layout_rebuild` (declared floor/persistence/domain/server files), `gym_scene_rebuild` (new shared scene/models and web scene renderer), and `gym_native_rebuild` (native adapters, continuous shared runtime, narrow shell integration). Root owns browser UI, integration, evidence, git, and release. Root also reviews the developer-reference citation and tracked-image census in src/licensing/realIp.ts and its test for the three owner-selected PNGs and exact execution brief. Root declares the crossing into all three `src/tuning` registry files and retirement of obsolete EmpireScreen stat UI mutation witnesses in `src/game/guaranteeTags.test.ts`; pure sporting/empire checks remain. Fresh read-only critics grade rendered artifacts and current evidence only.
+
 ### The split
 
 | | Session A — the main loop | Session B — the parallel scope |
