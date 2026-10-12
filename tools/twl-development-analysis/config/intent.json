@@ -1,0 +1,59 @@
+{
+  "$comment": "Product brief encoded as measurable expectations. Thresholds are analyzer tolerances, not game-feel values. Game-feel values stay in the target's feel.ts and are never read as truth here.",
+  "schemaVersion": 1,
+  "brief": [
+    "preserve the real Session A career-mode mechanics",
+    "use the career-mode sprite athlete",
+    "present it inside the Iron & Amber visual system",
+    "keep the athlete grounded on the platform",
+    "use responsive full-stage composition",
+    "use nearest-neighbor rendering",
+    "reject raw centered sprite tiles, giant gutters, floating athletes, still-image animation, and two-tap timing demos"
+  ],
+  "viewports": [
+    { "name": "phone", "width": 390, "height": 844 },
+    { "name": "desktop", "width": 1280, "height": 800 }
+  ],
+  "visualShell": "sprite-stage",
+  "ironAmber": {
+    "tokens": {
+      "--color-iron": "#14110f",
+      "--color-ink": "#f4efe4",
+      "--color-amber": "#d4892a",
+      "--color-paper": "#f3e6c8",
+      "--color-red-light": "#b83228",
+      "--color-white-light": "#f7f3ea"
+    },
+    "displayFontFamily": "Barlow Condensed",
+    "titleHeading": "Three White Lights"
+  },
+  "forbiddenDom": {
+    "depthGauge": [".squat-depth-gauge", "[data-squat-depth]"],
+    "timingLane": [".lane", ".lane-window", ".lane-needle"],
+    "illustratedStill": [".illustrated-athlete", ".illustrated-timing-art", ".illustrated-stage", "[data-illustrated-screen]"]
+  },
+  "forbiddenPromptFragments": ["amber window", "Tap in the amber"],
+  "stage": {
+    "width": 320,
+    "height": 320,
+    "contactY": 318,
+    "contactYTolerancePx": 0,
+    "integerScales": [1, 2, 3, 4],
+    "phoneMinStageWidthFraction": 0.78,
+    "desktopMinStageHeightFraction": 0.7,
+    "desktopGutterReviewFraction": 0.45,
+    "canvasPixelMismatchMaxFraction": 0.005,
+    "minDistinctFramesPerLift": 3,
+    "maxFrameJumpWithinPhase": 1,
+    "footDriftReviewPx": 48
+  },
+  "regression": {
+    "chromeBeatsMeanDiffMax": 0.06,
+    "playBeatsMeanDiffMax": 0.06,
+    "referenceTitleMeanDiffMax": 0.10
+  },
+  "parity": {
+    "maxFrameMismatchFraction": 0.0,
+    "renderLagToleranceFrames": 1
+  }
+}

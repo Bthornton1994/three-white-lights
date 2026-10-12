@@ -1,0 +1,58 @@
+{
+  "$comment": "Owner rulings, Phase 1 (2026-09-17). PR #79 is the candidate under analysis, not a known-good reference. Mechanics files are hash-verified on every run against both these pins and the authority commit itself.",
+  "schemaVersion": 1,
+  "target": {
+    "pr": 79,
+    "branch": "grok/iron-amber-sprite-sport-20260917",
+    "sha": "fc4c1aec06f0f079b851bb703f69ee67140b4f85",
+    "app": "arcade",
+    "status": "CANDIDATE_UNDER_ANALYSIS"
+  },
+  "presentationReference": {
+    "pr": 69,
+    "branch": "cursor/arcade-snes-visual-bar-ee5b",
+    "sha": "1151569c40c77485ab9e9299e5db0db022437a8a",
+    "app": "arcade",
+    "spriteRoot": "arcade/public/sprites"
+  },
+  "mechanicsAuthority": {
+    "pr": 59,
+    "branch": "grok/session-a-career-loop-v1-01",
+    "sha": "288db32c06232bb0fb65ce7236a0614c698a6920",
+    "files": {
+      "src/game/lift.ts": "4dc74947ffc64f1af36da92c01a7cfb53d3f021b802cba31f67c3ecdcb24e417",
+      "src/game/liftTuning.ts": "ef920d59eecdb5ac698f7515a1efe4af1c7ee0e38f9079f7f9cd6deace441f2a"
+    }
+  },
+  "protectedFilesAtTarget": {
+    "arcade/src/game/lift.ts": { "authorityPath": "src/game/lift.ts" },
+    "arcade/src/game/liftTuning.ts": { "authorityPath": "src/game/liftTuning.ts" },
+    "arcade/src/feel.ts": { "sha256": "b26c21b520d17a8e87e6abac17661fc219870a2320a376b5b1b1adfe0bc2425c" }
+  },
+  "editionModule": "arcade/src/sprites/edition.ts",
+  "anchorsModule": "arcade/src/sprites/anchors.ts",
+  "committedEvidenceDir": "arcade/evidence/sprite-sport",
+  "documents": {
+    "ironAmberReference": {
+      "path": "docs/design/IRON-AND-AMBER-REFERENCE.md",
+      "readFrom": [
+        { "label": "mechanics-authority", "sha": "288db32c06232bb0fb65ce7236a0614c698a6920" },
+        { "label": "pr-44", "sha": "c52444d407e9974209446ec1de7d127f1ce07a6a" },
+        { "label": "target", "sha": "fc4c1aec06f0f079b851bb703f69ee67140b4f85" }
+      ],
+      "conflictingClauses": [
+        "It replaces the legacy pixel-sprite presentation as the primary art direction.",
+        "Do not report VISUAL_IMPLEMENTATION_PASS while the legacy sprite experience remains the primary surface."
+      ]
+    },
+    "gdd": {
+      "path": "docs/GDD.md",
+      "readFrom": [
+        { "label": "target", "sha": "fc4c1aec06f0f079b851bb703f69ee67140b4f85" }
+      ],
+      "clauses": [
+        "### 7.1 Base Style — 16-bit SNES / Genesis Era"
+      ]
+    }
+  }
+}

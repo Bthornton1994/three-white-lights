@@ -1,0 +1,27 @@
+{
+  "name": "twl-development-analysis",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read-only development analysis layer for Three White Lights. Detects mismatches between product intent, the frozen lift mechanics, the sprite presentation, the Iron & Amber visual system, and the actual browser build. Never shipped in the game runtime.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "analyze": "node --disable-warning=ExperimentalWarning src/cli.ts analyze",
+    "analyze:bundle": "node --disable-warning=ExperimentalWarning src/cli.ts analyze-bundle",
+    "report": "node --disable-warning=ExperimentalWarning src/cli.ts report",
+    "fixtures:build": "node --disable-warning=ExperimentalWarning test/build-fixtures.ts",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "playwright": "1.56.1",
+    "pngjs": "7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "@types/pngjs": "^6.0.5",
+    "typescript": "^5.9.2"
+  }
+}

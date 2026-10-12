@@ -1,0 +1,11 @@
+{
+  "derivedFrom": "good-sprite-stage",
+  "mutation": "lift.ts at the target no longer matches the authority pin; sprite sheets changed vs reference; edition pins point elsewhere.",
+  "tracesKept": [
+    "phone-squat-a1",
+    "phone-squat-a2",
+    "phone-bench-a1",
+    "phone-deadlift-a1"
+  ],
+  "maxFrames": 100
+}

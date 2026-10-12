@@ -1,0 +1,11 @@
+{
+  "derivedFrom": "good-sprite-stage",
+  "mutation": "Canvas present but no per-frame anchors: world-y, contact-y and dest-y are absent; anchors module missing.",
+  "tracesKept": [
+    "phone-squat-a1",
+    "phone-squat-a2",
+    "phone-bench-a1",
+    "phone-deadlift-a1"
+  ],
+  "maxFrames": 100
+}

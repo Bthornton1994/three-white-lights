@@ -1,0 +1,12 @@
+{
+  "derivedFrom": "good-sprite-stage",
+  "mutation": "The athlete's contact line reports 290 instead of the platform line 318, and the ground line moves between frames.",
+  "tracesKept": [
+    "phone-squat-a1",
+    "phone-squat-a2",
+    "phone-bench-a1",
+    "phone-deadlift-a1"
+  ],
+  "maxFrames": 100,
+  "facts": "../good-sprite-stage/facts.json"
+}

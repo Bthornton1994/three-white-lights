@@ -1,0 +1,12 @@
+{
+  "derivedFrom": "good-sprite-stage",
+  "mutation": "Play screens expose a timing lane and 'Tap in the amber window' copy; no mechanics phase in the DOM.",
+  "tracesKept": [
+    "phone-squat-a1",
+    "phone-squat-a2",
+    "phone-bench-a1",
+    "phone-deadlift-a1"
+  ],
+  "maxFrames": 100,
+  "facts": "../good-sprite-stage/facts.json"
+}

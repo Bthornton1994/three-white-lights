@@ -1,0 +1,11 @@
+{
+  "derivedFrom": "good-sprite-stage",
+  "mutation": "No committed evidence, no anchors, no screenshots, no served facts: everything the rules must fail closed on.",
+  "tracesKept": [
+    "phone-squat-a1",
+    "phone-squat-a2",
+    "phone-bench-a1",
+    "phone-deadlift-a1"
+  ],
+  "maxFrames": 100
+}
