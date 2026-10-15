@@ -8,8 +8,7 @@
 feature work. If a request conflicts with the GDD, say so explicitly and ask
 whether to change the design or the request — do not silently pick one.
 
-If a design decision genuinely needs to change, update `docs/GDD.md` in the same
-commit as the code. The doc and the code never diverge.
+If a design decision genuinely needs to change, stop and surface the conflict (AGENTS.md:122). Update `docs/GDD.md` only when the task explicitly authorizes that governing change (AGENTS.md:131); when it does, update it in the same commit as the code so the doc and the code never diverge.
 
 ## Run Mode
 
@@ -92,8 +91,7 @@ These are checkable by real powerlifters and must be correct, not approximated:
 
 - **RPE → %1RM**: use a standard reps-in-reserve chart (Tuchscherer-style). Do
   not invent values.
-- **e1RM**: use an established formula (Epley or Brzycki). State which one is
-  used in a comment and be consistent.
+- **e1RM**: Epley only, `1RM = weight × (1 + reps/30)`. Brzycki is reference-only and is not a fallback.
 - **DOTS / Wilks**: use the published coefficients. Do not homebrew.
 - **Meet structure**: squat → bench → deadlift, three attempts each, total is the
   sum of best successful attempt per lift, attempts may not go down in weight
