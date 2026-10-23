@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "killed-2026-10-23T06-20-30-053Z-69372",
   "label": "killed",
   "command": [
@@ -31,13 +31,18 @@
     "procAvailable": false
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "exitCode": 0,
+  "finishedAtIso": "2026-10-23T06:20:37.691Z",
+  "elapsedSeconds": 7.6,
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-10-23T06:20:33.331Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-10-23T06:20:48.023Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/bryant"
+    "ref": "refs/heads/verify-markers/bryant",
+    "ok": true,
+    "lastOkIso": "2026-10-23T06:20:48.016Z"
   }
 }
